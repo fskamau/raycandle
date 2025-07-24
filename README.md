@@ -1,14 +1,19 @@
-n# raycandle
+# raycandle
 simple library for plotting candlesticks
 api similar to matplotlib
 
 ## installation
 
-1. clone raylib into raycandle folder and build statically
- - Note: No need to reinstall if you already have a local static fPIC build
+
+1. clone the repo 
+```bash 
+  git clone https://github.com/fskamau/raycandle.git raycandle
+  cd raycandle
+  ```
+  
+2. clone raylib and build it statically with POC
 
  ```bash 
- mkdir raycandle && cd raycandle
  git clone --depth=1 https://github.com/raysan5/raylib.git Raylib
  cd Raylib
  mkdir build && cd build 
@@ -19,27 +24,24 @@ api similar to matplotlib
  rm -rf Raylib
  ```
  
- 2. clone raycandle and build with raylib
- 
+ 3. build raycandle with raylib 
  ```bash
-
 (
-  set -e
-  git clone https://github.com/fskamau/raycandle.git raycandle
-  cd raycandle/raycandle
-  make
-  mv build/* ../
-  cd ..
-  rm -r raycandle
-  set +e
+ set -e
+ cd raycandle/craycandle
+ make
+ mv build/* ../
+ cd ..
+ rm -r craycandle
+ set +e
 ) 
 ```
-3. now raylib can be removed safely
-
+3. now, raylib can be removed safely
+```
 rm -r raylib
-
+```
 4. run pip install
- 
  ```bash 
-	 cd raycandle 
+  pip install .
+ ```
 	 
