@@ -31,6 +31,7 @@ api similar to matplotlib
   mv build/* ../
   cd ..
   rm -r raycandle
+  set +e
 ) 
 ```
 3. now raylib can be removed safely
@@ -39,3 +40,6 @@ rm -r raylib
 
 4. run pip install
  
+ ```bash 
+	 cd raycandle 
+	 
