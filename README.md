@@ -32,7 +32,10 @@ api similar to matplotlib
   cd ..
   rm -r raycandle
 ) 
+```
+3. now raylib can be removed safely
 
- ```
- 
+rm -r raylib
+
+4. run pip install
  

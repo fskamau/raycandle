@@ -2,7 +2,7 @@ import itertools
 import threading
 import warnings
 from typing import Any, NoReturn, Type
-
+import os 
 import cffi
 import numpy as np
 import pandas as pd
@@ -13,6 +13,8 @@ from .bases import (RC_Artist, RC_Axes, RC_Figure, _Api, ascii_encode,
 from .defines import *
 from .exceptions import *
 
+LIB_NAME="libraycandle.so.1"
+CDEF_NAME="raycandle_for_cffi.h"
 
 class Collector:
     def __init__(self, fig: RC_Figure, *args: RC_Artist):
@@ -146,8 +148,9 @@ class Figure(RC_Figure):
         self._rc_api = _Api
         self._rc_api.is_window_closed = False
         self._rc_api.ffi = cffi.FFI()
-        self._rc_api.lib = self._rc_api.ffi.dlopen("./deps/libraycandle.so.1")
-        self._rc_api.ffi.cdef(open("./deps/raycandle_for_cffi.h").read())
+        pf=os.path.dirname(__file__)
+        self._rc_api.lib = self._rc_api.ffi.dlopen(os.path.join(pf,LIB_NAME))
+        self._rc_api.ffi.cdef(open(os.path.join(pf,CDEF_NAME)).read())
 
     @property
     def is_window_closed(self) -> bool:
