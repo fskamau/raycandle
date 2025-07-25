@@ -9,7 +9,7 @@ A simple library for plotting candlesticks with an simple api similar to matplot
   cd raycandle
   ```
   
-### Clone raylib and build it statically with POC
+### Clone raylib and build it statically with -fPIC
 
  ```bash 
  git clone --depth=1 https://github.com/raysan5/raylib.git Raylib
