@@ -49,9 +49,14 @@ rm -r raylib
  ```bash 
  python -c "import raycandle; raycandle.Figure().show();"
  ```
+ which should display something closer to 
+ ![simple window](examples/simple_window.png)
   
 ### You may run examples with 
   ```python
-  import raycandle
-  raycandle.examples()
+  python examples/run-all-examples.py 
   ```	 
+  or any example in */examples* folder
+  
+  #### Simple png of a simple window 
+  ![Simple window screenshot](examples/example.png)
