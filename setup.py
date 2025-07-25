@@ -8,7 +8,8 @@ setup(
     install_requires=[
         "cffi>=1.0.0",
         "numpy",
-        "pandas"
+        "pandas",
+        "typing_extensions",
     ],
     package_data={
         "raycandle": [
