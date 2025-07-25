@@ -56,7 +56,7 @@ rm -r raylib
   ```python
   python examples/run-all-examples.py 
   ```	 
-  or any example in */examples* folder
+  or any example in then ![*/examples*](examples/) folder
   
   #### Simple png of a simple window 
   ![Simple window screenshot](examples/example.png)
