@@ -115,7 +115,8 @@ Axes* get_axes_under_mouse(Figure* figure){
   if (aium==figure->axes_len)return NULL;
   return figure->axes+aium;
 }
-RC_ONCE_AFTER_INIT_WINDOW  void axes_set_legend(Figure* figure){
+
+void axes_set_legend(Figure* figure){
   for(size_t i=0;i<figure->axes_len;++i){
     Axes* axes=figure->axes+i;
     for(size_t a=0;a<axes->artist_len;++a){

@@ -4,7 +4,6 @@
 #include "cust_malloc.h"
 #include <math.h>
 
-#define RC_ONCE_AFTER_INIT_WINDOW // identifies a function is called once after InitWindow
 #define RC_DATA_IN_LIMIT(data, limit) (((limit).limit_min <= ((data))) && (data) <= ((limit).limit_max))
 
 // NOTE:this 4 macros do not check whether data is in within limit. use RC_DATA_IN_LIMIT

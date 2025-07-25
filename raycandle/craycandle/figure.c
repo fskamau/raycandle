@@ -14,11 +14,11 @@
 static void figure_draw_cursors(Figure *figure);                // draw cursor positions
 static bool set_real_span_skel_map(Figure *figure);             // map axes skeletons to real pixels
 static bool set_borders(Figure *figure);                        // returns if borders can be set
-RC_ONCE_AFTER_INIT_WINDOW static void set_font(Figure *figure); // load font
 static void update_fps(Figure *figure);                         // set fps according to figure->fps
 static void draw_title(Figure *figure);                         // draw title
 static void draw_tooltip(Figure *figure);                       // draw tooltip data
 static void draw_current_time(Figure* figure);  //show current time. might be used if the app is doing nothing
+static void load_font(Figure* figure);
 
 static void figure_draw_cursors(Figure *figure) {
   size_t axes_under_mouse;
@@ -93,6 +93,8 @@ static bool set_real_span_skel_map(Figure *figure) {
   return true;
 }
 
+
+
 static bool set_borders(Figure *figure) {
   figure->border_dimensions[0] = (size_t)(figure->border_percentage * figure->width) / (figure->cols + 1);
   long int x=(long int)figure->height-(figure->font_size * (figure->title == NULL ? figure->show_tooltip?1:0 : 2));
@@ -101,16 +103,7 @@ static bool set_borders(Figure *figure) {
   return true;
 }
 
-RC_ONCE_AFTER_INIT_WINDOW static void set_font(Figure *figure) {
-  figure->font = cm_malloc(sizeof(Font), RC_ECHO(Font));
-  Font font = LoadFontEx("fonts/font.ttf", figure->font_size, 0, 250);
-  if (font.baseSize != figure->font_size) {
-    font = GetFontDefault();
-    RC_WARN("could not load './fonts/font.ttf'; using default font\n");
-  }
-  *((Font *)figure->font) = font;
-}
-
+  
 void raylib_init(Figure *figure){
   SetConfigFlags(FLAG_WINDOW_RESIZABLE);
   SetConfigFlags(FLAG_MSAA_4X_HINT);
@@ -118,7 +111,7 @@ void raylib_init(Figure *figure){
   char* window_title=figure->window_title?figure->window_title:string_create_from_format(0,NULL,"%s.%d",RAY_WINDOW_TITLE,getpid());
   InitWindow(figure->width, figure->height,window_title);
   string_destroy(window_title);
-  set_font(figure);
+  load_font(figure);
   update_fps(figure);
 }
 
@@ -163,36 +156,6 @@ static void draw_current_time(Figure* figure){
   DrawTextEx(*(Font *)figure->font,buffer, (Vector2){x, figure->height/2}, figure->font_size, figure->font_spacing, figure->text_color);
 }
 
-bool update_figure(Figure *figure) {
-  int sd[] = {GetScreenWidth(), GetScreenHeight()};
-  figure->sds = (sd[0] ==figure->width &&sd[1] ==figure->height) ? SCREEN_DIMENSION_STATE_UNCHANGED: SCREEN_DIMENSION_STATE_CHANGED; // cannot be SCREEN_DIMENSION_STATE_DEFAULT
-  if(figure->force_update){
-    figure->force_update=false;
-    figure->sds=SCREEN_DIMENSION_STATE_CHANGED;
-    if(figure->has_dragger){update_from_position(figure->dragger.cur_position, figure);}
-  }
-  figure->width = sd[0];
-  figure->height = sd[1];
-  if(!set_borders(figure)){return false;}
-  if(!set_real_span_skel_map(figure)){return false;}
-  if(figure->title!=NULL){draw_title(figure);}
-  if(IsKeyPressed(KEY_LEFT_SHIFT)||IsKeyPressed(KEY_RIGHT_SHIFT)){figure->clear_screen=!figure->clear_screen;}
-  if(figure->clear_screen){
-    figure->force_update=true;
-    draw_current_time(figure);
-    return true;
-  }
-  for (size_t i = 0; i < figure->axes_len; ++i) {if(!draw_axes(figure->axes + i)){return false;}}
-  if (figure->dragger.update_len > 0) {
-    mouse_updates(figure);
-  }
-  if (figure->show_cursors == true) {
-    figure_draw_cursors(figure);
-  }
-  if(figure->show_tooltip){draw_tooltip(figure);}
-  return true;
-}
-
 static void draw_title(Figure *figure) {
   RC_ASSERT(figure->title!=NULL);
   float x = align_text(figure->font, figure->title, figure->width, figure->font_size, figure->font_spacing, RC_ALIGNMENT_CENTER);
@@ -226,6 +189,49 @@ static void draw_tooltip(Figure *figure) {
   DrawTextEx(*(Font *)figure->font, buffer, (Vector2){x, figure->height - figure->font_size}, figure->font_size, figure->font_spacing, figure->text_color);
 }
 
+
+static void load_font(Figure* figure){;
+  Font font = GetFontDefault();
+  if(string_len(figure->font_path)){
+    font = LoadFontEx(figure->font_path, figure->font_size, 0, 250);
+    if (font.baseSize != figure->font_size) {      
+      RC_WARN("could not load %s'; using default font\n",figure->font_path);
+    }
+  }
+  *((Font *)figure->font) = font;
+}
+
+
+bool update_figure(Figure *figure) {
+  int sd[] = {GetScreenWidth(), GetScreenHeight()};
+  figure->sds = (sd[0] ==figure->width &&sd[1] ==figure->height) ? SCREEN_DIMENSION_STATE_UNCHANGED: SCREEN_DIMENSION_STATE_CHANGED; // cannot be SCREEN_DIMENSION_STATE_DEFAULT
+  if(figure->force_update){
+    figure->force_update=false;
+    figure->sds=SCREEN_DIMENSION_STATE_CHANGED;
+    if(figure->has_dragger){update_from_position(figure->dragger.cur_position, figure);}
+  }
+  figure->width = sd[0];
+  figure->height = sd[1];
+  if(!set_borders(figure)){return false;}
+  if(!set_real_span_skel_map(figure)){return false;}
+  if(figure->title!=NULL){draw_title(figure);}
+  if(IsKeyPressed(KEY_LEFT_SHIFT)||IsKeyPressed(KEY_RIGHT_SHIFT)){figure->clear_screen=!figure->clear_screen;}
+  if(figure->clear_screen){
+    figure->force_update=true;
+    draw_current_time(figure);
+    return true;
+  }
+  for (size_t i = 0; i < figure->axes_len; ++i) {if(!draw_axes(figure->axes + i)){return false;}}
+  if (figure->dragger.update_len > 0) {
+    mouse_updates(figure);
+  }
+  if (figure->show_cursors == true) {
+    figure_draw_cursors(figure);
+  }
+  if(figure->show_tooltip){draw_tooltip(figure);}
+  return true;
+}
+
 void update_xlim_shared(Figure *figure) {
   size_t y = figure->dragger.start;
   size_t cp=figure->dragger.cur_position;
@@ -241,7 +247,7 @@ void update_xlim_shared(Figure *figure) {
   }
 }
 
-Figure *create_figure(int *fig_size, char *window_title, Rc_Color background_color, size_t axes_len, size_t rows, size_t cols, size_t *axes_skel, char *labels, float border_percentage, int fps, size_t font_size, int font_spacing){
+Figure *create_figure(int *fig_size, char *window_title, Rc_Color background_color, size_t axes_len, size_t rows, size_t cols, size_t *axes_skel, char *labels, float border_percentage, int fps, size_t font_size, int font_spacing,char* font_path){
   if (border_percentage < 0.f || border_percentage >= 1.f) {RC_WARN("border_percentage is %f\n", border_percentage);}
   if (font_size == 0) {RC_ERROR("font_size is 0\n");}
   setlocale(LC_NUMERIC, "");
@@ -267,7 +273,8 @@ Figure *create_figure(int *fig_size, char *window_title, Rc_Color background_col
       .axes_skels_copy = axes_skels_copy,
       .axes = NULL,
       .border_dimensions = border_dimensions,
-      .font = NULL,
+      .font = cm_malloc(sizeof(Font), RC_ECHO(Font)),
+      .font_path=string_create_from_format(0,NULL,"%s",font_path),
       .mouseinfo = (MouseInfo){.down = false, .wait_up = false},
       .axes_frame_color = BLACK,
       .background_color = background_color,
@@ -346,5 +353,4 @@ void update_timeframe(Figure* figure,size_t timeframe){
   if (timeframe < 0.f) {RC_ERROR("timeframe must not be NaN or zero\n");}
   figure->dragger.timeframe=timeframe;
 }
-
 

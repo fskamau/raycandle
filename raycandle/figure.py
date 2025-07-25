@@ -15,6 +15,8 @@ from .exceptions import *
 
 LIB_NAME="libraycandle.so.1"
 CDEF_NAME="raycandle_for_cffi.h"
+FONT_PATH="fonts/font.ttf"
+FPATH=os.path.dirname(__file__)
 
 class Collector:
     def __init__(self, fig: RC_Figure, *args: RC_Artist):
@@ -78,6 +80,7 @@ class Figure(RC_Figure):
             fps,
             font_size,
             font_spacing,
+            self._rc_api.cstr(os.path.join(FPATH,FONT_PATH))
         )
         self._xformatter_type, self._xlim_format = FormatterType.TIME, self._rc_api.cstr("[%Y-%m-%d %H:%M:%S]")
         self.axes: list[Axes]
@@ -148,9 +151,8 @@ class Figure(RC_Figure):
         self._rc_api = _Api
         self._rc_api.is_window_closed = False
         self._rc_api.ffi = cffi.FFI()
-        pf=os.path.dirname(__file__)
-        self._rc_api.lib = self._rc_api.ffi.dlopen(os.path.join(pf,LIB_NAME))
-        self._rc_api.ffi.cdef(open(os.path.join(pf,CDEF_NAME)).read())
+        self._rc_api.lib = self._rc_api.ffi.dlopen(os.path.join(FPATH,LIB_NAME))
+        self._rc_api.ffi.cdef(open(os.path.join(FPATH,CDEF_NAME)).read())
 
     @property
     def is_window_closed(self) -> bool:
@@ -160,12 +162,12 @@ class Figure(RC_Figure):
     @window_not_closed
     def len_data(self) -> int:
         return self._rc_api.fig.dragger.len_data
-
+        
     def _init(self) -> None:
         self.axes = self.ax = [Axes(i, self) for i in range(self._rc_api.fig.axes_len)]
 
     @window_not_closed
-    def _show(self) -> None:
+    def _show(self) -> None:        
         self._rc_api.is_window_closed = False
         self._rc_api.lib.show(self._rc_api.fig)
         self._rc_api.is_window_closed = True
@@ -187,10 +189,6 @@ class Figure(RC_Figure):
         -----
         sending SIGINT will be ignored if `show` runs on the main thread i;e Ctrl-C won't work
         """
-        import sys
-
-        if len(sys.argv) > 1:
-            self.set_title(" ".join(sys.argv[1:]))
         if not block:
             threading.Thread(target=self._show).start()
             return

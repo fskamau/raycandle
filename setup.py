@@ -13,7 +13,8 @@ setup(
     package_data={
         "raycandle": [
             "libraycandle.so.1",
-            "raycandle_for_cffi.h"
+            "raycandle_for_cffi.h",
+            "fonts/*",
         ]
     },
     include_package_data=True,

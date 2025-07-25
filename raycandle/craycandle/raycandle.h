@@ -133,6 +133,14 @@ struct Axes {
   uint8_t tableau_t10_index;
 };
 
+
+typedef char* Str;
+void string_summarize(Str);
+void string_append(Str str,const char* format,...);
+void string_clear(Str str);
+void string_print(Str str);
+
+
 typedef struct {
   Axes *axes; //current Axes where the cursor is
   float accumulator; // diffx accumulated here until they exceed x-spacing
@@ -157,6 +165,7 @@ struct Figure {
   Axes *axes;
   size_t *border_dimensions;
   void *font;
+  Str font_path;
   MouseInfo mouseinfo;
   Rc_Color axes_frame_color;
   Rc_Color background_color;
@@ -185,7 +194,7 @@ struct Figure {
   show_cursors: whether to draw cursors. cursor are straight lines following the mouse pointer
   clear_scrren: if true, figure will  be filled with background only. bound to KEY_I
 */
-Figure *create_figure(int *fig_size, char *window_title, Rc_Color background_color, size_t axes_len, size_t rows, size_t cols, size_t *axes_skel, char *labels, float border_percentage, int fps, size_t font_size, int font_spacing);
+Figure *create_figure(int *fig_size, char *window_title, Rc_Color background_color, size_t axes_len, size_t rows, size_t cols, size_t *axes_skel, char *labels, float border_percentage, int fps, size_t font_size, int font_spacing,char* font_path);
 
 /**
 show calls InitWindow which will then draw the figure on screen
@@ -203,11 +212,5 @@ void set_dragger(Figure *figure, Dragger dragger);
 void update_from_position(size_t new_position, Figure *figure); // sets the current postion to `new_position` and updates all artists
 Axes* get_axes_under_mouse(Figure* figure);
 void cm_free_all_();// frees all allocated memory
-
-typedef char* Str;
-void string_summarize(Str);
-void string_append(Str str,const char* format,...);
-void string_clear(Str str);
-void string_print(Str str);
 
 #endif // __RAYCANDLE__
