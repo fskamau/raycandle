@@ -1,17 +1,15 @@
 # raycandle
-simple library for plotting candlesticks
-api similar to matplotlib
+A simple library for plotting candlesticks with an simple api similar to matplotlib.
 
-## installation
+## Installation
 
-
-1. clone the repo 
+### Clone the repo 
 ```bash 
   git clone https://github.com/fskamau/raycandle.git raycandle
   cd raycandle
   ```
   
-2. clone raylib and build it statically with POC
+### Clone raylib and build it statically with POC
 
  ```bash 
  git clone --depth=1 https://github.com/raysan5/raylib.git Raylib
@@ -24,7 +22,7 @@ api similar to matplotlib
  rm -rf Raylib
  ```
  
- 3. build raycandle with raylib 
+### Build raycandle with raylib 
  ```bash
 (
  set -e
@@ -33,15 +31,27 @@ api similar to matplotlib
  mv build/* ../
  cd ..
  rm -r craycandle
- set +e
 ) 
 ```
-3. now, raylib can be removed safely
+
+### Now, raylib can be removed safely
 ```
 rm -r raylib
 ```
-4. run pip install
+
+### Run pip install to install (activate your environment)
  ```bash 
   pip install .
  ```
-	 
+ 
+## Post installation
+ This snippet will show a simple window if everything is working correctly.
+ ```bash 
+ python -c "import raycandle; raycandle.Figure().show();"
+ ```
+  
+### You may run examples with 
+  ```python
+  import raycandle
+  raycandle.examples()
+  ```	 
