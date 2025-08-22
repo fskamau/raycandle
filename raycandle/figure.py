@@ -65,87 +65,21 @@ class Figure(RC_Figure):
         self._pxdata: Any = None
         self._axes: tuple[Type[RC_Axes]]
         self.visible_data, self.update_len = visible_data, update_len
-        rows, cols, labels, axes_skels = self._generate_axes_skeleton(fig_skel)
         self._load_lib()
         self._rc_api.fig = self._rc_api.lib.create_figure(
+            self._rc_api.cstr(fig_skel.replace("\n"," ")),
             fig_size,
             self._rc_api.cstr(window_title) if window_title is not None else self._rc_api.ffi.NULL,
             fig_background,
-            len(labels),
-            rows,
-            cols,
-            axes_skels,
-            [ascii_encode(x) for x in labels],
             border_percentage,
             fps,
             font_size,
             font_spacing,
-            self._rc_api.cstr(os.path.join(FPATH,FONT_PATH))
-        )
+            self._rc_api.cstr(os.path.join(FPATH,FONT_PATH)))
         self._xformatter_type, self._xlim_format = FormatterType.TIME, self._rc_api.cstr("[%Y-%m-%d %H:%M:%S]")
         self.axes: list[Axes]
         self.ax: list[Axes]
         self._init()
-
-    @staticmethod
-    def _generate_axes_skeleton(f):
-        tos = set(" \t")
-        k = [list(iter(x)) for x in f.splitlines()]
-        c = [x for x in k if len(x) != 0 and all([x.count(o) != len(x) for o in " \t"]) and set(x) != tos]
-        l = [len(x) for x in c]
-        if len(l) == 0:
-            raise Exception("no characters on the string")
-        if l.count(l[0]) != len(l):
-            raise Exception(f"lengths of linesplit axes-mosaic do not match {[''.join(x) for x in c]} has lengths {l}")
-        Rows = len(labels := ["".join(x) for x in c])
-        labels_, tosl, Cols = ["", []], [[], []], sum([labels[0].count(x) for x in set(labels[0]).difference(tos)])
-        for row in range(len(labels)):
-            for col in range(len(labels[0])):
-                char = labels[row][col]
-                if set(char).intersection(tos):
-                    if row == 0:
-                        tosl[0].append(col)
-                        tosl[1].append(0)
-                    else:
-                        try:
-                            i = tosl[0].index(col)
-                            if tosl[1][i] == row - 1:
-                                tosl[1][i] += 1
-                            else:
-                                raise ValueError
-                        except ValueError:
-                            raise Exception(f"separator '{char}' must be along all rows of col {col}")
-                    continue
-                if char not in labels_[0]:
-                    if char == "\0":
-                        raise Exception("labels may not contain null terminator '\\0'")
-                    labels_[0] += char
-                    labels_[1].append([col, row, 0, 0])
-                else:
-                    pl = labels_[1][labels_[0].index(char)]
-                    if row == pl[1]:
-                        if col - (pl[0] + pl[2]) == 1:
-                            pl[2] += 1
-                        else:
-                            raise Exception(f"label '{char}' has jumped from col {pl[0]+pl[2]} to {col} across row {row}")
-                    else:  # exit early
-                        if labels[row].count(char) > 0:
-                            if labels[row][pl[0] : pl[2] + pl[0] + 1].count(char) != pl[2] + 1:
-                                raise Exception(
-                                    f"char '{char}' occurred first in row {pl[1]} cols [{pl[0]}:{pl[2]+pl[0]+1}]=[{labels[pl[1]][pl[0]:pl[2]+pl[0]+1]}] but exact same cols in row {row} have [{labels[row][pl[0]:pl[2]+pl[0]+1]}]"
-                                )
-                            if labels[row].count(char) > labels[pl[1]].count(char):
-                                raise Exception(f"excess char '{char}' in row {row} as compared to first occurrent row {pl[1]};")
-                    if col == pl[0]:
-                        if row - (pl[1] + pl[3]) == 1:
-                            pl[3] += 1
-                        else:
-                            raise Exception(f"label '{char}' has jumped from row {pl[1]+pl[3]} to row {row} along col {col}")
-        m = min([x[0] for x in labels_[1]])
-        skels = []
-        for x in [[s[0] - m, s[1], s[2] + 1, s[3] + 1] for s in labels_[1]]:
-            skels = [*skels, *x]
-        return Rows, Cols, [x for x in labels_[0]], skels
 
     def _load_lib(self) -> None:
         self._rc_api = _Api
