@@ -10,7 +10,7 @@ A simple library for drawing candlesticks with an api somewhat similar to matplo
 #include <stddef.h>
 #include <stdint.h>
 #define RANDOM_PIXEL (int)(rand()%(255+1))
-#define RANDOM_COLOR ((Color){RANDOM_PIXEL, RANDOM_PIXEL, RANDOM_PIXEL, 255})
+#define RANDOM_COLOR() ((Color){RANDOM_PIXEL, RANDOM_PIXEL, RANDOM_PIXEL, 255})
 #define RC_LEGEND_ICON_WIDTH 50
 #define RC_LEGEND_PADDING 30
 #define AXES_FRAME_THICK 1
@@ -171,7 +171,7 @@ struct Figure {
   Rc_Color background_color;
   Rc_Color text_color;
   ScreenDimensionState sds; // if this equals SCREEN_DIMENSION_DEFAULT,  show has not been called yet
-  bool show_cursors,force_update,has_dragger,show_tooltip,clear_screen;
+  bool show_cursors,force_update,has_dragger,clear_screen;
 };
 
 /**
@@ -194,8 +194,7 @@ struct Figure {
   show_cursors: whether to draw cursors. cursor are straight lines following the mouse pointer
   clear_scrren: if true, figure will  be filled with background only. bound to KEY_I
 */
-Figure *create_figure(int *fig_size, char *window_title, Rc_Color background_color, size_t axes_len, size_t rows, size_t cols, size_t *axes_skel, char *labels, float border_percentage, int fps, size_t font_size, int font_spacing,char* font_path);
-
+Figure *create_figure(char* figskel,int *fig_size, char *window_title, Rc_Color background_color,float border_percentage, int fps, size_t font_size, int font_spacing,char* font_path);
 /**
 show calls InitWindow which will then draw the figure on screen
  */

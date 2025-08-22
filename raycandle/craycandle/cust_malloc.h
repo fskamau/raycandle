@@ -39,19 +39,20 @@ simple 1 header for printing calls to malloc and free (provided by stdlib)
 #define CM_SILENT 0
 #endif // CM_SILENT 
 
-void *_cm_malloc(size_t bytes, const char *target,const char *fname,int lineno);//malloc `bytes` 
-void _cm_free_ptrv(void *ptrv,const char *fname,int lineno) ; // frees pointer stored in ptrc and sets ptrv to NULL
+
+#define CM_MALLOC(bytes,target) target=cm_malloc((bytes),#target)
 
 #ifndef CM_OFF
 #define cm_malloc(bytes,target) _cm_malloc((bytes),(target),__FILE__,__LINE__)
 #define cm_free_ptrv(ptrv) _cm_free_ptrv(ptrv,__FILE__,__LINE__)
 #define cm_free_all() _cm_free_all(__FILE__,__LINE__)
-
+void *_cm_malloc(size_t bytes, const char *target,const char *fname,int lineno);//malloc `bytes` 
+void _cm_free_ptrv(void *ptrv,const char *fname,int lineno) ; // frees pointer stored in ptrc and sets ptrv to NULL
 size_t cm_malloc_size();//returns bytes allocated
 size_t cm_chain_length();//returns len of subsequent calls to malloc
 void _cm_free_all(const char *fname,int lineno);//free the chain
 
-#else //CM_OFF is not defined
+#else //CM_OFF is defined
 #define cm_malloc(bytes,_) malloc((bytes))
 #define cm_free_ptrv(ptrv)  do{void* tmp;				\
   memcpy(&tmp, ptrv, sizeof(tmp));					\
@@ -169,6 +170,7 @@ void _cm_free_all(const char *fname,int lineno){
   }
   //since in the same process we can alloc again, reset cm_pointer_chain
   cm_pointer_chain=(CM_PointerChain){.ptr=NULL,.size=0,.next=NULL};
+  cm_memory_allocated=0;
   const char *size= (cm_memory_allocated > 1024.f ? (cm_memory_allocated /= 1024.f) > 1000.f ? (cm_memory_allocated /= 1024.f) > 1000.f ? (cm_memory_allocated /= 1024.f, "Gb") : "Mb" : "Kb" : "B");
   CM_INFO("freed approximately %'.zu %s\n",cm_memory_allocated, size);
   return;

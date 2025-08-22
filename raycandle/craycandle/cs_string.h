@@ -21,6 +21,11 @@ typedef char* Str;
 Str string_create(unsigned int len,void* mem);
 Str string_create_from_format(unsigned int len,void* mem,const char* format,...);//return a formatted string
 void string_append(Str str,const char* format,...);
+char* string_pat(Str str,unsigned int index);
+char string_at(Str str,unsigned int index);
+unsigned int string_count(Str str,char c);
+unsigned int string_count_consecutive(Str str,char c, unsigned int start); //count consecutive occurrences of c in str starting from  start
+Str string_split(Str str,unsigned int start,unsigned int len);
 void string_summarize(Str str);//print a summary of the string
 void string_destroy(Str str);//frees a string if its a dynamic string
 unsigned int string_len(Str str);
@@ -28,7 +33,6 @@ unsigned int string_get_remaining(Str str);
 char* string_get_current_point(Str str);
 void string_print(Str str);
 void string_clear(Str str);
-void string_increase_len(Str str,unsigned int len);//some functions take str and return how much they put in the str
 
 #ifdef CS_IMPLEMENTATION
 
@@ -50,59 +54,52 @@ void string_increase_len(Str str,unsigned int len);//some functions take str and
 
 #define STRING_ALLOC(name,size) name=cm_malloc((size),#name)
 #define STRING_GET_START(string_ptr) (((char*)(string_ptr))+(sizeof(_String)))
-#define STRING_GET_CURRENT(string_ptr) (STRING_GET_START((string_ptr))+(string_ptr)->len)
+#define STRING_GET_CURRENT(string_ptr) (STRING_GET_START((string_ptr))+strlen(STRING_GET_START((string_ptr))))
 
 
 typedef struct{
   unsigned int capacity;
-  unsigned int len;
   unsigned char stack;
 }_String;
 
-static inline _String* string_get(Str str);//returns a reference to the string structure
+static inline _String* string_get(Str str);
 static inline void _string_append(Str str,const char* format,va_list args,unsigned int total_length);
 
 
 static inline  _String* string_get(Str str){
   _String* s=(_String*)((char*)str-sizeof(_String));
-#define STRING_SMC "string may be corrupted\n"
-  STRING_CHECK_CONDITION((int)s->len>=0,STRING_SMC);
-  STRING_CHECK_CONDITION((int)s->len<=((int)s->capacity),"");
-#undef STRING_SMC
+  STRING_CHECK_CONDITION((long)strlen(str)<=((long)s->capacity),"string may be corrupted\n");
   return s;
 }
 
 
 static inline  void _string_append(Str str, const char* format,va_list args,unsigned int total_length){
   _String* string=string_get(str);
-  unsigned int newl;
+  unsigned int newl,sl=strlen(str);
   if(total_length==0){
     va_list args2;
     va_copy(args2,args);
-    if((newl=vsnprintf(NULL,0,format,args2))+string->len>string->capacity){
-      newl-=string->capacity-string->len;
+    if((newl=vsnprintf(NULL,0,format,args2))+sl>string->capacity){
+      newl-=string->capacity-sl;
       STRING_ERROR(string_create_from_format(0,NULL,"need more space to fit %d item%s\n",newl,newl==1?"":"s"));
     }
     va_end(args2);
   }else STRING_CHECK_CONDITION(total_length<=string->capacity,"");
-  string->len+=vsnprintf(STRING_GET_CURRENT(string),string->capacity-string->len+1,format,args);
-}
-
+  STRING_CHECK_CONDITION(sl+vsnprintf(STRING_GET_CURRENT(string),string->capacity-sl+1,format,args)+1<=string->capacity+1,"string full\n");}
 
 Str string_create(unsigned int len,void* mem){
-  if((int)len<=0)STRING_ERROR("len <= 0\n");
+  if((int)len<0)STRING_ERROR("len <= 0\n");
   char* str;
   if(mem){
-    STRING_CHECK_CONDITION(len>=sizeof(_String),"stack string too small to fit _String struct size");
+    STRING_CHECK_CONDITION(len+1>=sizeof(_String),"stack string too small to fit _String struct size + null terminator");
     str=mem;
     len-=(1+sizeof(_String));
   }else{
     STRING_ALLOC(str,len+sizeof(_String)+1);
   }
-  *((_String*)str)=(_String){.capacity=len,.len=0,.stack=mem?1:0};
-  str[sizeof(_String)]='\0';
-  string_get(str+(sizeof(_String)));
-  return str+(sizeof(_String));
+  *((_String*)str)=(_String){.capacity=len,.stack=mem?1:0};
+  memset(STRING_GET_START(str),0,len+1);
+  return STRING_GET_START(str);
 }
 
 
@@ -132,28 +129,63 @@ void string_append(Str str,const char* format,...){
 }
 
 
-void string_summarize(Str str){
+char* string_pat(Str str,unsigned int index){
   _String* string=string_get(str);
-  printf("String(capacity=%'d len=%'d, inheap=%d)\n",string->capacity,string->len,!string->stack);
+  if(string->capacity==0||string->capacity<index)STRING_ERROR("Index error len is %d; requested %d\n",string->capacity,index);
+  return &str[index];
 }
 
+
+char string_at(Str str,unsigned int index){
+  return *string_pat(str,index);
+}
+
+unsigned int string_count(Str str,char c){
+  unsigned int count=0;
+  while((str=strchr(str,c))!=NULL){
+    count+=1;
+    str+=1;}
+  return count;
+}
+
+unsigned int string_count_consecutive(Str str,char c, unsigned int start){
+  STRING_CHECK_CONDITION(start<string_len(str),"corrupted string");
+  unsigned int count=0;
+  for(size_t i=start;i<string_len(str);++i){
+    if(string_at(str,i)!=c)break;
+    count++;
+  }
+    return count;
+}
+
+Str string_split(Str str,unsigned int start,unsigned int len){
+  STRING_CHECK_CONDITION(strlen(str)>start,"");
+  STRING_CHECK_CONDITION(strlen(str)>=start+len,"");
+  Str str2=string_create(len,NULL);
+  memcpy(str2,string_pat(str,start),len);
+  return str2;
+}
+
+void string_summarize(Str str){
+  _String* string=string_get(str);
+  printf("String(capacity=%'d len=%'zu, inheap=%d)\n",string->capacity,strlen(str),!string->stack);
+}
 
 void string_destroy(Str str){
   _String* string=string_get(str);
   string->capacity=0;
-  string->len=0;
   if(string->stack)return;
   cm_free_ptrv(&string);
 }
 
 
 unsigned int string_len(Str str){
-  return string_get(str)->len;
+  return strlen(str);
 }
 
 unsigned int string_get_remaining(Str str){
   _String* string=string_get(str);
-  return string->capacity-string->len;
+  return string->capacity-strlen(str);
 }
 
 
@@ -162,35 +194,9 @@ char* string_get_current_point(Str str){
 }
 
 void string_clear(Str str){
-  _String* string=string_get(str);
-  string->len=0;
   str[0]='\0';
 }
 
-
-void string_print(Str str){
-  _String* string=string_get(str);
-  unsigned int len=0;
-  while(len<string->len){putchar(str[len++]);}
-}
-
-/*
-  some funtions take a char* and return number of chars written. This len maybe passed here.
-  Mostly, string_get_current_point should be used to return current buffe point to write.
-  e.g string_increase_len(buffer,snprintf(string_get_current_point(buffer),64,"%s\n","hello"));
-
- */
-void string_increase_len(Str str,unsigned int len){
-  unsigned int remaining;
-  if (len==0)return;
-  _String* string=string_get(str);
-  remaining=string->capacity-string->len;    
-  if(len>remaining)
-    STRING_ERROR("OverflowError: cannot increase len by %d; remaining is %d\n",len,remaining);
-  string->len+=len;
-  if(str[string->len]!='\0')
-    STRING_ERROR("string len increased by %d but end is missing null terminator\n",len);
-}
 
 #endif// CS_IMPLEMENTATION
 

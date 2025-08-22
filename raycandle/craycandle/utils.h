@@ -76,16 +76,16 @@ CloseWindow();
 
 translates to :
 
-raylib_init()// calls InitWindow()
-while(!WindowShouldClose()){
-  ClearBackground();
-  raylib_init_loop()//set up controls and ajust figure size
-  BeginDrawing()
-  //any more logic here
-  update_figure() // will draw artists
-  EndDrawing()
-}
-CloseWindow()
+  raylib_init(figure);// calls InitWindow()
+  while(!WindowShouldClose()){
+    ClearBackground(WHITE);
+    raylib_init_loop();//set up controls and ajust figure size
+    BeginDrawing();
+    //any more logic here
+  update_figure(figure); // will draw artists
+  EndDrawing();
+  }
+  CloseWindow();
 
 */
 void raylib_init(Figure *figure);   // init window

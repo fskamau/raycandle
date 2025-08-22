@@ -29,7 +29,7 @@ void epoch2strftime(int epoch,Str buffer,const char* format){
   time_t raw_time=epoch;
   if(epoch==0){time(&raw_time);}
   struct tm tm=*localtime(&raw_time);
-  string_increase_len(buffer,written=strftime(string_get_current_point(buffer),(len_buffer=string_get_remaining(buffer)),format,&tm));
+  written=strftime(string_get_current_point(buffer),(len_buffer=string_get_remaining(buffer)),format,&tm);
   if(written==0){
       fprintf(stderr,"strftime(%s) would exceed buffer size of %d bytes.\n",format,len_buffer);
       cm_free_all();

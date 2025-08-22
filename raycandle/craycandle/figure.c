@@ -20,6 +20,143 @@ static void draw_tooltip(Figure *figure);                       // draw tooltip 
 static void draw_current_time(Figure* figure);  //show current time. might be used if the app is doing nothing
 static void load_font(Figure* figure);
 
+  typedef struct {
+    size_t len,rows,cols,*skel;
+    char* labels;
+  }Skel;
+
+#define SKEL_ERROR(format,...)do{			\
+    fprintf(stderr,"%s:%d: ",__FILE__,__LINE__);	\
+    fprintf(stderr,format ,##__VA_ARGS__);exit(1);}	\
+  while(0)
+
+static Skel skel_create(char*skel_str){
+  if(!skel_str)SKEL_ERROR("Cannot be null\n");
+  struct Cskel{
+    uint32_t sx,sy,w,h;
+    struct Cskel *next;
+    char c;
+  };
+  uint32_t row,cols,col;
+  row=cols=col=0;
+  uint32_t index=0;
+  Str str=string_create_from_format(0,NULL,"%s",skel_str);
+  if(string_len(str)==0){SKEL_ERROR("len of str is 0\n");}
+  char c;
+  uint32_t col_start=0;
+  while(index<string_len(str)){
+    c=string_at(str,index);
+    if(c==' '){
+      uint32_t spaces=string_count_consecutive(str,' ',index);
+      index+=spaces-1;
+      col_start=index+1;
+      col=0;
+    }
+    else{
+      if(col==0)row+=1;
+      bool k;
+      if((((k=(index+1!=string_len(str))) && string_at(str,index+1)==' ') ||(!k))){
+	if(cols==0){
+	  cols=(index-col_start)+1;
+	}
+	else if((index-col_start)+1!=cols)
+	  {SKEL_ERROR("unequal cols; expected %d got %d in row %d \n",cols,(index-col_start)+1,row);}	
+      }
+      col+=1;
+    }
+    index+=1;
+  }
+  Str str2=string_create(row*cols,NULL);
+  index=0;
+  uint32_t sindex=0;
+  while(index<string_len(str)){
+    if((c=string_at(str,index))!=' '){
+      *string_pat(str2,sindex)=c;
+      sindex+=1;
+    }
+    index+=1;}
+  string_destroy(str);
+  str=str2;
+  struct Cskel* cskel=cm_malloc(sizeof(struct Cskel),"cskel");
+  *cskel=(struct Cskel){0};
+  struct Cskel *temp=cskel;    
+  index=0;
+  uint32_t unique_chars=1;
+  for(size_t srow=0;srow<row;++srow){
+    str2=string_split(str,srow*cols,cols);	
+    for(size_t scol=0;scol<cols;++scol){
+      c=string_at(str2,scol);
+      uint32_t cc=string_count_consecutive(str2,c,scol);
+      uint32_t ca=string_count(str2,c);
+      if(cc!=ca)SKEL_ERROR("skipped occurence; consecutive col occurence of char %c is %d but total occurence is %d in row %zu\n",c,cc,ca,srow);
+      struct Cskel otemp=(struct Cskel){.sx=scol,.sy=srow,.w=cc,.h=1,.c=c,.next=NULL};
+      temp=cskel;
+      while(1){
+	if(temp->c==c){
+	  if(srow>temp->sy+temp->h-1){
+	    SKEL_ERROR("skipped row occurence for char '%c'; last valid row occurence at row %d col %d new one at row %zu col %zu\n",c,temp->sy+temp->h-1,temp->sx+temp->w-1,srow,scol);
+	  }
+	  goto NEXT;
+	}
+	if(temp->c==0){
+	  *temp=otemp;
+	  break;
+	}
+	else
+	  {
+	    if(!temp->next){
+	      CM_MALLOC(sizeof(struct Cskel),temp->next);
+	      *temp->next=otemp;
+	      temp=temp->next;
+	      unique_chars+=1;
+	      break;
+	    }
+	    temp=temp->next;
+	  }
+      }
+      Str str3=string_create(row,NULL);
+      for(size_t i=0;i<row-srow;++i){
+	*string_pat(str3,i)=string_at(str,(i+srow)*cols+scol);
+      }
+      cc=string_count_consecutive(str3,c,0);
+      ca=string_count(str3,c);
+      string_destroy(str3);
+      if(cc!=ca)SKEL_ERROR("skipped occurence; consecutive row occurence of char %c is %d but total occurence is %d along col %zu\n",c,cc,ca,scol);
+      temp->h=cc;
+      if(cc!=1){
+	for(size_t l=temp->sy+1;l<cc+temp->sy;++l){
+	  Str s4=string_split(str,l*cols,cols);
+	  uint32_t ll=string_count_consecutive(s4,c,scol);
+	  uint32_t lc=string_count(s4,c);
+	  if(ll!=temp->w||ll!=lc)SKEL_ERROR("unequal col occurences for char '%c'; %d occurences in row %d but %d occurence in row %zu\n",c,temp->w,temp->sy,ll==temp->w?lc:ll,l);
+	  string_destroy(s4);
+	}
+      }
+    NEXT:
+      scol+=temp->w-1;
+    }
+    string_destroy(str2);
+  }
+  CM_MALLOC(sizeof(size_t)*4*unique_chars,size_t *ld);
+  CM_MALLOC(sizeof(char)*unique_chars,char *cs);
+  temp=cskel;
+  while(temp){
+    ld[0]=temp->sx;
+    ld[1]=temp->sy;
+    ld[2]=temp->w;
+    ld[3]=temp->h;
+    *cs=temp->c;
+    ld+=4;
+    cs+=1;
+    struct Cskel*p=temp;
+    temp=temp->next;	
+    cm_free_ptrv(&p);
+  }
+  ld-=4*unique_chars;
+  cs-=unique_chars;
+  return (Skel){.len=unique_chars,.rows=row,.cols=cols,.skel=ld,.labels=cs};
+} 
+
 static void figure_draw_cursors(Figure *figure) {
   size_t axes_under_mouse;
   if ((axes_under_mouse = get_axes_index_under_mouse(figure)) == figure->axes_len) {
@@ -62,44 +199,43 @@ static bool set_real_span_skel_map(Figure *figure) {
     }
     break;
   }
-  case SCREEN_DIMENSION_STATE_CHANGED: {
+  case SCREEN_DIMENSION_STATE_CHANGED: 
     size_t axes_skels_copy[4] = {0};
-    long int x= (long int)figure->height-(figure->font_size*(figure->title == NULL ? figure->show_tooltip?1:0 : 2)); // may underflow if height<font_size
+    long int x= (long int)figure->height-(figure->font_size*(figure->title == NULL ?1 : 2)); // may underflow if height<font_size
     if(x<0){return false;}
-    size_t axes_sizes[] = {figure->width / figure->cols,  x / figure->rows};
+    size_t axes_sizes[] = {figure->width / (figure->cols),  x / figure->rows},b0;
     for (size_t axes_index = 0; axes_index < figure->axes_len; axes_index++) {
       size_t index = axes_index * 4;
       // set new absolute measurements
       axes_skels_copy[0] = axes_sizes[0] * figure->axes_skels[index];
-      axes_skels_copy[1] = axes_sizes[1] * figure->axes_skels[index + 1] + (figure->title == NULL ? 0 :figure->show_tooltip? figure->font_size:0);
+      axes_skels_copy[1] = axes_sizes[1] * figure->axes_skels[index + 1] + (figure->title == NULL ? 0 :figure->font_size);
       axes_skels_copy[2] = axes_sizes[0] * figure->axes_skels[index + 2];
       axes_skels_copy[3] = axes_sizes[1] * figure->axes_skels[index + 3];
       // ajdust the measurents  by removing border, creating space at the top for title height if title!=null   and
       // creating space at the bottom for tooltip
-      size_t b0 = figure->axes_skels[index] == 0 ? figure->border_dimensions[0] : (size_t)figure->border_dimensions[0] / 2;
+      b0 =  (size_t)(figure->border_dimensions[0] / 2);
       axes_skels_copy[0] += b0;
-      axes_skels_copy[2] -= (size_t)(figure->axes_skels[index + 2] + figure->axes_skels[index] == figure->cols ? figure->border_dimensions[0] : figure->border_dimensions[0] / 2) + b0;
-      size_t b1 = (size_t)(figure->border_dimensions[1] + figure->border_dimensions[1] / 2);
-      axes_skels_copy[1] += b1;
-      axes_skels_copy[3] -= (size_t)(figure->axes_skels[index + 1] + figure->axes_skels[index + 3] == figure->rows ? figure->border_dimensions[1] : figure->border_dimensions[1] / 2) + b1;
+      axes_skels_copy[2] -=b0*2;
+      b0 = (size_t)(figure->border_dimensions[1] / 2);
+      axes_skels_copy[1] += b0;
+      axes_skels_copy[3] -= b0*2;
       // then copy these measurements into the axes
       figure->axes[axes_index].startX = figure->axes_skels_copy[index] = axes_skels_copy[0];
       figure->axes[axes_index].startY = figure->axes_skels_copy[index + 1] = axes_skels_copy[1];
       figure->axes[axes_index].width = figure->axes_skels_copy[index + 2] = axes_skels_copy[2];
       figure->axes[axes_index].height = figure->axes_skels_copy[index + 3] = axes_skels_copy[3];
     }
-  } break;
+    break;
   }
   return true;
 }
 
 
-
 static bool set_borders(Figure *figure) {
-  figure->border_dimensions[0] = (size_t)(figure->border_percentage * figure->width) / (figure->cols + 1);
-  long int x=(long int)figure->height-(figure->font_size * (figure->title == NULL ? figure->show_tooltip?1:0 : 2));
+  figure->border_dimensions[0] = (figure->border_percentage * figure->width) / (figure->cols + 1);
+  long int x=(long int)figure->height-(figure->font_size * (figure->title == NULL ? 1: 2));
   if(x<0){return false;}
-  figure->border_dimensions[1] = (size_t)(figure->border_percentage * x) / (figure->rows + 1);
+  figure->border_dimensions[1] = (figure->border_percentage * x) / (figure->rows + 1);
   return true;
 }
 
@@ -166,7 +302,6 @@ static void draw_tooltip(Figure *figure) {
   /*
     fps  [index_under_mouse/total_length] [current_time-xindex[-1]] timeframe 'axes_label_under_mouse' x_index_under_mouse y_index_under_mouse
   */
-  RC_ASSERT(figure->show_tooltip);
   #define buf_size  128
   char _buffer[buf_size];
   char* buffer=string_create(buf_size,_buffer);  
@@ -228,7 +363,7 @@ bool update_figure(Figure *figure) {
   if (figure->show_cursors == true) {
     figure_draw_cursors(figure);
   }
-  if(figure->show_tooltip){draw_tooltip(figure);}
+  draw_tooltip(figure);
   return true;
 }
 
@@ -247,14 +382,14 @@ void update_xlim_shared(Figure *figure) {
   }
 }
 
-Figure *create_figure(int *fig_size, char *window_title, Rc_Color background_color, size_t axes_len, size_t rows, size_t cols, size_t *axes_skel, char *labels, float border_percentage, int fps, size_t font_size, int font_spacing,char* font_path){
+Figure *create_figure(char* figskel,int *fig_size, char *window_title, Rc_Color background_color,float border_percentage, int fps, size_t font_size, int font_spacing,char* font_path){
+  Skel s=skel_create(figskel);
   if (border_percentage < 0.f || border_percentage >= 1.f) {RC_WARN("border_percentage is %f\n", border_percentage);}
   if (font_size == 0) {RC_ERROR("font_size is 0\n");}
   setlocale(LC_NUMERIC, "");
   size_t *border_dimensions = cm_malloc(sizeof(size_t) * 2, RC_ECHO(border_dimensions));
-  size_t *axes_skels_copy = cm_malloc(sizeof(size_t) * axes_len * 4, RC_ECHO(axes_skels_copy));
-  size_t *axes_skels_dyn = cm_malloc(sizeof(size_t) * axes_len * 4, RC_ECHO(axes_skels_dyn));
-  memcpy(axes_skels_dyn, axes_skel, sizeof(axes_skel[0]) * axes_len * 4);
+  size_t *axes_skels_dyn = cm_malloc(sizeof(size_t) * s.len * 4, RC_ECHO(axes_skels_dyn));
+  memcpy(axes_skels_dyn, s.skel, sizeof(s.skel[0]) * s.len * 4);
   Figure *figure = cm_malloc(sizeof(Figure), RC_ECHO(Figure));
   *figure = (Figure){
       .width = fig_size[0],
@@ -266,11 +401,11 @@ Figure *create_figure(int *fig_size, char *window_title, Rc_Color background_col
       // .dragger=set by calling set_dragger
       .title =NULL,
       .window_title=window_title?string_create_from_format(0,NULL,"%s",window_title):window_title,
-      .axes_len = axes_len,
-      .rows = rows,
-      .cols = cols,
+      .axes_len = s.len,
+      .rows = s.rows,
+      .cols = s.cols,
       .axes_skels = axes_skels_dyn,
-      .axes_skels_copy = axes_skels_copy,
+      .axes_skels_copy = s.skel,
       .axes = NULL,
       .border_dimensions = border_dimensions,
       .font = cm_malloc(sizeof(Font), RC_ECHO(Font)),
@@ -283,13 +418,13 @@ Figure *create_figure(int *fig_size, char *window_title, Rc_Color background_col
       .show_cursors = false,
       .force_update=true,
       .has_dragger=false,
-      .show_tooltip=true,
       .clear_screen=false,
-
   };
-  create_axes(figure, labels);
+  create_axes(figure, s.labels);
+  cm_free_ptrv(&s.labels);
   return figure;
 }
+
 
 void show(Figure* figure){
   RC_ASSERT(figure!=NULL);
