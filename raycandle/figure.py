@@ -26,6 +26,9 @@ class Collector:
         self._fig = fig
         self._set_dict([args])
 
+    def __getitem__(self,index):
+        return self._artists[index]
+    
     def _set_dict(self, a):
         if issubclass(type(a), RC_Artist):
             if not hasattr(a, "__data_names__"):
