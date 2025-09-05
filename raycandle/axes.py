@@ -26,7 +26,7 @@ class Axes(RC_Axes):
         if "line_type" in kwargs:
             raise TypeError("line type cannot be set")
         assert xpos >= 0 and xpos <= 1
-        self.plot(np.float64(xpos), line_type=LINE_TYPE_V_LINE, **kwargs)
+        self.plot(np.float64(xpos), line_type=LineType.V_LINE, **kwargs)
 
     @final
     @window_not_closed
@@ -37,7 +37,7 @@ class Axes(RC_Axes):
         if "line_type" in kwargs:
             raise TypeError("line type cannot be set")
         assert ypos >= 0 and ypos <= 1
-        self.plot(np.float64(ypos), line_type=LINE_TYPE_H_LINE, **kwargs)
+        self.plot(np.float64(ypos), line_type=LineType.H_LINE, **kwargs)
 
     @window_not_closed
     def plot(self, artist: Union[Type[RC_Artist], pd.Series], **kwargs) -> Type[RC_Artist]:
