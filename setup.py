@@ -3,7 +3,6 @@ from setuptools import setup, find_packages
 setup(
     name="raycandle",
     version="0.1.0",
-    author_email="kamstefin@gmail.com",
     packages=find_packages(),
     install_requires=[
         "cffi>=1.0.0",
