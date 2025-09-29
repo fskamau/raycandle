@@ -43,7 +43,7 @@ class Line(RC_Artist):
         self._ydata_pointer = self._rc_api.ffi.cast("double*", self.ydata.ctypes.data)
         self._label = self._rc_api.cstr(self.label) if self.label is not None else self._rc_api.ffi.NULL
         gdata = {"cols": 1, "ydata": self._ydata_pointer, "label": self._label}
-        self._color_ptr = self._rc_api.ffi.cast("Rc_Color*", self.color.ctypes.data if self.color is not None else self._rc_api.ffi.NULL)
+        self._color_ptr = self._rc_api.ffi.cast("CFFI_Color*", self.color.ctypes.data if self.color is not None else self._rc_api.ffi.NULL)
         return (ArtistType.LINE, gdata, (np.nanmin(self.ydata), np.nanmax(self.ydata)), self.thick, self._color_ptr, self.config)
 
     @override
@@ -86,7 +86,7 @@ class Candle(RC_Artist):
             self._ydata_pointer,
             self._label,
         )
-        self._color_pointer = self._rc_api.ffi.cast("Rc_Color*", self.color.ctypes.data if self.color is not None else self._rc_api.ffi.NULL)
+        self._color_pointer = self._rc_api.ffi.cast("CFFI_Color*", self.color.ctypes.data if self.color is not None else self._rc_api.ffi.NULL)
         return (
             ArtistType.CANDLE,
             gdata,

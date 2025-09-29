@@ -31,7 +31,6 @@ void string_destroy(Str str);//frees a string if its a dynamic string
 unsigned int string_len(Str str);
 unsigned int string_get_remaining(Str str);
 char* string_get_current_point(Str str);
-void string_print(Str str);
 void string_clear(Str str);
 
 #ifdef CS_IMPLEMENTATION
@@ -67,6 +66,7 @@ static inline void _string_append(Str str,const char* format,va_list args,unsign
 
 
 static inline  _String* string_get(Str str){
+  STRING_CHECK_CONDITION(str!=NULL,"string may be corrupted\n");
   _String* s=(_String*)((char*)str-sizeof(_String));
   STRING_CHECK_CONDITION((long)strlen(str)<=((long)s->capacity),"string may be corrupted\n");
   return s;
@@ -180,6 +180,7 @@ void string_destroy(Str str){
 
 
 unsigned int string_len(Str str){
+  string_get(str);
   return strlen(str);
 }
 

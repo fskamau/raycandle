@@ -6,14 +6,14 @@
 
 void locator_update_data_buffers(Axes* axes,LimitChanged lim){
   if(lim==LIMIT_CHANGED_ALL_LIM){RC_ASSERT(axes->artist_len!=0&&axes->artist!=NULL);}
-  size_t rows=axes->parent->dragger.visible_data;
+  size_t rows=axes->parent->dragger.vlen;
   if(rows==0){RC_ERROR("unreachable function '%s'  when figure has no xdataa\n",RC_ECHO(locator_update_data_buffers));}
   if(lim==LIMIT_CHANGED_XLIM||lim==LIMIT_CHANGED_ALL_LIM){
     double* xdata=axes->parent->dragger.xdata_shared;
     size_t width=axes->width;
     size_t startX=axes->startX;
-    for(size_t row=0;row<rows;row++){
-      axes->xdata_buffer[row]=xdata[row]*width+startX;
+    for(size_t i=0;i<rows;++i){
+      axes->xdata_buffer[i]=xdata[i]*width+startX;
       }
   }
   for(size_t i=0;i<axes->artist_len;++i){
@@ -42,17 +42,17 @@ void epoch2strftime(int epoch,Str buffer,const char* format){
 put the data under mouse position on the tooltip
 */
 void locator_tooltip_mouse_position(Axes* axes,Str buffer,int mouseX,int mouseY){
-    RC_ASSERT(axes->artist_len!=0 && axes->parent->dragger.len_data!=0);
-    if(axes->ylocator.format==NULL&&axes->ylocator.locator_type!=FORMATTER_NULL_FORMATTER){RC_ERROR("formatter is not null but format is null\n");}
+    RC_ASSERT(axes->artist_len!=0 && axes->parent->has_dragger!=0);
+    if(axes->ylocator.format==NULL&&axes->ylocator.ftype!=FORMATTER_NULL_FORMATTER){RC_ERROR("formatter is not null but format is null\n");}
     double x=RC_PIXEL_X_2_DATA((float)mouseX,axes);
     double y=RC_PIXEL_Y_2_DATA((float)mouseY,axes);
     string_append(buffer,"x=");
-    formatter_to_str(axes->parent->dragger.xformatter, axes->parent->dragger.xlim_format,buffer,&x);
+    formatter_to_str(axes->parent->dragger.locator.ftype, axes->parent->dragger.locator.format,buffer,&x);
     string_append(buffer," y=");
-    formatter_to_str(axes->ylocator.locator_type,axes->ylocator.format,buffer,&y);
+    formatter_to_str(axes->ylocator.ftype,axes->ylocator.format,buffer,&y);
 }
 
-void formatter_to_str(Formatter formatter,Str format,Str buffer,void* mem){
+void formatter_to_str(FormatterType formatter,Str format,Str buffer,void* mem){
   switch (formatter) {
     case FORMATTER_NULL_FORMATTER:
       string_append(buffer,"<null>");

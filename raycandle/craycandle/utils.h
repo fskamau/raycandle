@@ -6,10 +6,9 @@
 
 #define RC_DATA_IN_LIMIT(data, limit) (((limit).limit_min <= ((data))) && (data) <= ((limit).limit_max))
 
-// NOTE:this 4 macros do not check whether data is in within limit. use RC_DATA_IN_LIMIT
-#define RC_PIXEL_X_2_DATA(pixel, axes) (((((pixel) - (axes)->startX) / (double)(axes)->width) * ((axes)->parent->dragger.xlimit.diff)) + (axes)->parent->dragger.xlimit.limit_min)
+double RC_PIXEL_X_2_DATA(int pixel,Axes* axes);
 #define RC_PIXEL_Y_2_DATA(pixel, axes) (((((axes)->height - ((pixel) - (axes)->startY)) /(double) (axes)->height) * (axes)->ylocator.limit.diff) + (axes)->ylocator.limit.limit_min)
-#define RC_DATA_X_2_PIXEL(data, axes) (((((data) - (axes)->parent->dragger.xlimit.limit_min) / (axes)->parent->dragger.xlimit.diff) * (axes)->width) + (axes)->startX)
+#define  RC_DATA_X_2_PIXEL please use GetMousePosition()
 #define RC_DATA_Y_2_PIXEL(data, axes) (((((axes)->ylocator.limit.limit_max - (data)) / (axes)->ylocator.limit.diff) * (axes)->height) + (axes)->startY)
 #define RC_COLOR1_EQUALS_COLOR2(color1, color2) ((color1).r == (color2).r && (color1).g == (color2).g && (color1).b == (color2).b && (color1).a == (color2).a)
 
@@ -17,7 +16,7 @@
 #define RC_MAX(val, max) ((val) > (max) ? (val) : (max))
 
 #define RC_ECHO(__any) #__any
-#define FIGURE_FONT(__pfigure) (*(Font *)((__pfigure)->font))
+#define FIGURE_FONT(__pfigure)  (*(Font*)(__pfigure)->font)
 
 #if RAYCANDLE_DEBUG
 #include <assert.h>
@@ -61,7 +60,7 @@ typedef enum {
   RC_ALIGNMENT_RIGHT,
 } Rc_Alignment;
 
-float align_text(Font *font, const char *text, int width, int font_size, int spacing,Rc_Alignment alignment); // returns startx for the text
+float align_text(Font font, const char *text, int width, int font_size, int spacing,Rc_Alignment alignment); // returns startx for the text
 
 Color RC_faded_color_from(Color original);
 Color axes_get_next_tableau_t10_color(Axes *axes);
@@ -94,6 +93,4 @@ bool update_figure(Figure *figure); // main update
 
 
 /*some figure defaults*/
-#define FIGURE_DEFAULT() create_figure((int[]){960,720},NULL,WHITE,1,1,1,(size_t[]){0,0,1,1},(char[]){'a'},0.01,20,20,0);
-
 #undef CUSM_PREFIX

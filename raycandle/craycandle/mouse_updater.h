@@ -8,3 +8,7 @@ updates can be triggered by:
     3. Normal left click and drag
 */
 void mouse_updates(Figure* figure);
+
+#define RC_ZOOMX_SCALE 2
+#define RC_ZOOMY_SCALE 5
+

@@ -1,11 +1,13 @@
-#include <stdlib.h>
 #include "raycandle.h"
+#include <stdlib.h>
+#define CS_IMPLEMENTATION
+#define CM_SILENT !RAYCANDLE_DEBUG
+#include "cs_string.h"
 
 #define CM_SILENT !RAYCANDLE_DEBUG
 #define CM_IMPLEMENTATION
 #include "cust_malloc.h"
-#define CS_IMPLEMENTATION
-#include "cs_string.h"
+
 #include "utils.h"
 
 static Log_Level RC_Log_Level_Min=LOG_LEVEL_INFO;
@@ -21,7 +23,7 @@ void RC_write_std(Log_Level log_level,const char file[],int line,const char func
   char* log_type=(log_level)==LOG_LEVEL_INFO?"Info":(log_level==LOG_LEVEL_WARN)?"Warn":"Error";
   
 #if RAYCANDLE_DEBUG //file:line log_type[time] func message
-  string_append(error_buffer,"%s:%d:[%s]: in function '%s': ", file, line,log_type, func);
+  string_append(error_buffer,"%s:%d: [%s]: in function '%s': ", file, line,log_type, func);
 #else //Info [time] message
   (void)file;
   (void)line;
@@ -37,8 +39,8 @@ void RC_write_std(Log_Level log_level,const char file[],int line,const char func
     }
 }
 
-float align_text(Font* font,const char * text, int width,int font_size,int spacing,Rc_Alignment alignment){
-  float f=MeasureTextEx(*font,text,font_size,spacing).x;
+float align_text(Font font,const char * text, int width,int font_size,int spacing,Rc_Alignment alignment){
+  float f=MeasureTextEx(font,text,font_size,spacing).x;
   if(f==0.f){f=MeasureText(text, font_size);}
   if((float)width<f){return 0.f;}
   switch(alignment){
@@ -72,4 +74,10 @@ Color axes_get_next_tableau_t10_color(Axes* axes){
 
 void cm_free_all_(void){
   cm_free_all();
+}
+
+
+double RC_PIXEL_X_2_DATA(int pixel,Axes* axes){
+  double a=((pixel-axes->startX)/(double)axes->width)*axes->parent->dragger.vlen+axes->parent->dragger.start;
+  return axes->parent->dragger.xdata[(size_t)a]+(a-((long int )a))*axes->parent->dragger.timeframe;
 }

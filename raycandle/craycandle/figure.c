@@ -10,6 +10,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <sys/time.h>
+#include "utils.h"
 
 static void figure_draw_cursors(Figure *figure);                // draw cursor positions
 static bool set_real_span_skel_map(Figure *figure);             // map axes skeletons to real pixels
@@ -20,9 +21,9 @@ static void draw_tooltip(Figure *figure);                       // draw tooltip 
 static void draw_current_time(Figure* figure);  //show current time. might be used if the app is doing nothing
 static void load_font(Figure* figure);
 
-  typedef struct {
-    size_t len,rows,cols,*skel;
-    char* labels;
+typedef struct {
+  size_t len,rows,cols,*skel;
+  char* labels;
   }Skel;
 
 #define SKEL_ERROR(format,...)do{			\
@@ -137,6 +138,7 @@ static Skel skel_create(char*skel_str){
     }
     string_destroy(str2);
   }
+  if(!cols||!row)SKEL_ERROR("string contains only spaces\n");
   CM_MALLOC(sizeof(size_t)*4*unique_chars,size_t *ld);
   CM_MALLOC(sizeof(char)*unique_chars,char *cs);
   temp=cskel;
@@ -154,33 +156,24 @@ static Skel skel_create(char*skel_str){
   }
   ld-=4*unique_chars;
   cs-=unique_chars;
-  return (Skel){.len=unique_chars,.rows=row,.cols=cols,.skel=ld,.labels=cs};
+  return (Skel){.len=unique_chars,.rows=row,.cols=cols,.skel=ld,.labels=cs};  
 } 
 
 static void figure_draw_cursors(Figure *figure) {
-  size_t axes_under_mouse;
-  if ((axes_under_mouse = get_axes_index_under_mouse(figure)) == figure->axes_len) {
-    return;
-  }
-  double xdata, ydata, zdata;
+  Axes* axes;
+  if(!(axes=get_axes_under_mouse(figure)))return;
+  double xdata, ydata,zdata;
   Vector2 v = GetMousePosition();
-  Axes axes = figure->axes[axes_under_mouse];
-  if (axes.artist_len == 0) {return;} // all axes share same x-axis
-  xdata = RC_PIXEL_X_2_DATA(v.x, &axes);
-  ydata = RC_PIXEL_Y_2_DATA(v.y, &axes);
+  if (axes->artist_len == 0) {return;} // all axes share same x-axis
+  xdata=(double)(v.x-axes->startX)/axes->width;
+  ydata=(double)(v.y-axes->startY)/axes->height;
   for (size_t i = 0; i < figure->axes_len; ++i) {
-    axes = figure->axes[i];
-    if (axes.artist_len == 0) {continue;}
-    if (RC_DATA_IN_LIMIT(xdata, axes.parent->dragger.xlimit)) {
-      zdata = RC_DATA_X_2_PIXEL(xdata, &axes);
-      for (int i = axes.startY; i < (int)(axes.startY + axes.height); ++i) {DrawPixel(zdata, i, figure->text_color);}
-    }
-    if (RC_DATA_IN_LIMIT(ydata, axes.ylocator.limit)) {
-      zdata = RC_DATA_Y_2_PIXEL(ydata, &axes);
-      for (int i = axes.startX; i < (int)(axes.startX + axes.width); ++i) {
-        DrawPixel(i, zdata, figure->text_color);
-      }
-    }
+    axes = &figure->axes[i];
+    if (axes->artist_len == 0){continue;}
+    zdata=xdata*axes->width+axes->startX;
+    for (int i = axes->startY; i < (int)(axes->startY + axes->height); ++i)DrawPixel(zdata, i, figure->text_color);
+    zdata= ydata*axes->height+axes->startY;
+    for (int i = axes->startX; i < (int)(axes->startX + axes->width); ++i)DrawPixel(i, zdata, figure->text_color);
   }
 }
 
@@ -288,14 +281,14 @@ static void draw_current_time(Figure* figure){
 		tm_info->tm_min,
 		tm_info->tm_sec,
 		tv.tv_usec/10000);
-  float x = align_text(figure->font, buffer, figure->width-10, figure->font_size, figure->font_spacing, RC_ALIGNMENT_CENTER);
-  DrawTextEx(*(Font *)figure->font,buffer, (Vector2){x, figure->height/2}, figure->font_size, figure->font_spacing, figure->text_color);
+  float x = align_text(FIGURE_FONT(figure), buffer, figure->width-10, figure->font_size, figure->font_spacing, RC_ALIGNMENT_CENTER);
+  DrawTextEx(FIGURE_FONT(figure),buffer, (Vector2){x, figure->height/2}, figure->font_size, figure->font_spacing, figure->text_color);
 }
 
 static void draw_title(Figure *figure) {
   RC_ASSERT(figure->title!=NULL);
-  float x = align_text(figure->font, figure->title, figure->width, figure->font_size, figure->font_spacing, RC_ALIGNMENT_CENTER);
-  DrawTextEx(*(Font *)figure->font, figure->title, (Vector2){x, 0}, figure->font_size, figure->font_spacing, figure->text_color);
+  float x = align_text(FIGURE_FONT(figure), figure->title, figure->width, figure->font_size, figure->font_spacing, RC_ALIGNMENT_CENTER);
+  DrawTextEx(FIGURE_FONT(figure), figure->title, (Vector2){x, 0}, figure->font_size, figure->font_spacing, figure->text_color);
 }
 
 static void draw_tooltip(Figure *figure) {
@@ -307,35 +300,37 @@ static void draw_tooltip(Figure *figure) {
   char* buffer=string_create(buf_size,_buffer);  
   size_t axes_under_mouse = get_axes_index_under_mouse(figure);
   Axes *axes = figure->axes + axes_under_mouse;
-  string_append(buffer,"fps=%'d  mem:%'zu ", GetFPS(),cm_malloc_size());
+  string_append(buffer,"fps=%'d  mem:%'zu ", GetFPS(),cm_malloc_size());  
   if (figure->has_dragger) { // the user has called `set_dragger` because otherwise we do not have xdata
     if (figure->axes_len != axes_under_mouse && axes->artist_len != 0) {
-      int mousex_iloc=(int)(((float)(GetMouseX()-axes->startX)/(axes->width)*figure->dragger.visible_data)+figure->dragger.start);
-      string_append(buffer," [%d/%zu] ",mousex_iloc,(figure->dragger.len_data-1));
+      int mousex_iloc=(int)(((float)(GetMouseX()-axes->startX)/(axes->width)*figure->dragger.vlen)+figure->dragger.start);
+      string_append(buffer,"%zu [%d/%zu] ",figure->dragger.vlen,mousex_iloc,(figure->dragger._len-1));
       string_append(buffer,"timeframe=%zu ", figure->dragger.timeframe);
       locator_tooltip_mouse_position(axes, buffer, GetMouseX(), GetMouseY());
     } else
     {
       string_append(buffer,"Xindex[-1]=");
-      formatter_to_str(figure->dragger.xformatter,figure->dragger.xlim_format,buffer,&figure->dragger.xdata[figure->dragger.len_data-1]);
+      formatter_to_str(figure->dragger.locator.ftype,figure->dragger.locator.format,buffer,&figure->dragger.xdata[figure->dragger._len-1]);
     }
   }
-  float x = figure->border_dimensions[0]+AXES_FRAME_THICK+align_text(figure->font, buffer, (size_t)figure->width - (figure->border_dimensions[0]+AXES_FRAME_THICK), figure->font_size, figure->font_spacing, RC_ALIGNMENT_LEFT);
-  DrawTextEx(*(Font *)figure->font, buffer, (Vector2){x, figure->height - figure->font_size}, figure->font_size, figure->font_spacing, figure->text_color);
+  float x = figure->border_dimensions[0]+AXES_FRAME_THICK+align_text(FIGURE_FONT(figure), buffer, (size_t)figure->width - (figure->border_dimensions[0]+AXES_FRAME_THICK), figure->font_size, figure->font_spacing, RC_ALIGNMENT_LEFT);
+  DrawTextEx(FIGURE_FONT(figure), buffer, (Vector2){x, figure->height - figure->font_size}, figure->font_size, figure->font_spacing, figure->text_color);
 }
 
-
 static void load_font(Figure* figure){;
-  Font font = GetFontDefault();
+  Font font,font2;
+  font=font2= GetFontDefault();
   if(string_len(figure->font_path)){
     font = LoadFontEx(figure->font_path, figure->font_size, 0, 250);
-    if (font.baseSize != figure->font_size) {      
+    font2 = LoadFontEx(figure->font_path, RC_LABEL_FONT_SIZE, 0, 250);
+    if (font.baseSize != figure->font_size) {
       RC_WARN("could not load %s'; using default font\n",figure->font_path);
     }
   }
-  *((Font *)figure->font) = font;
+  *(Font*)figure->font = font;
+  *(Font*)figure->label_font= font2;
+  figure->label_font_ex=MeasureTextEx(font2,"a",RC_LABEL_FONT_SIZE,figure->font_spacing);
 }
-
 
 bool update_figure(Figure *figure) {
   int sd[] = {GetScreenWidth(), GetScreenHeight()};
@@ -343,11 +338,11 @@ bool update_figure(Figure *figure) {
   if(figure->force_update){
     figure->force_update=false;
     figure->sds=SCREEN_DIMENSION_STATE_CHANGED;
-    if(figure->has_dragger){update_from_position(figure->dragger.cur_position, figure);}
+    if(figure->has_dragger){update_from_position(figure->dragger.start, figure);}
   }
   figure->width = sd[0];
   figure->height = sd[1];
-  if(!set_borders(figure)){return false;}
+  if(!set_borders(figure)){return false;} 
   if(!set_real_span_skel_map(figure)){return false;}
   if(figure->title!=NULL){draw_title(figure);}
   if(IsKeyPressed(KEY_LEFT_SHIFT)||IsKeyPressed(KEY_RIGHT_SHIFT)){figure->clear_screen=!figure->clear_screen;}
@@ -357,7 +352,7 @@ bool update_figure(Figure *figure) {
     return true;
   }
   for (size_t i = 0; i < figure->axes_len; ++i) {if(!draw_axes(figure->axes + i)){return false;}}
-  if (figure->dragger.update_len > 0) {
+  if (figure->dragger.ulen > 0) {
     mouse_updates(figure);
   }
   if (figure->show_cursors == true) {
@@ -367,22 +362,21 @@ bool update_figure(Figure *figure) {
   return true;
 }
 
-void update_xlim_shared(Figure *figure) {
+
+
+void update_xlim(Figure *figure) {
   size_t y = figure->dragger.start;
-  size_t cp=figure->dragger.cur_position;
-  bool at_end=cp==figure->dragger.len_data;
-  double lmax,lmin,diff;
-  lmax=figure->dragger.xdata[RC_MIN(cp,figure->dragger.len_data-1)]+(at_end?figure->dragger.timeframe:0);
-  lmin=figure->dragger.xdata[cp-figure->dragger.visible_data];
-  diff=lmax-lmin;
-  figure->dragger.xlimit=(Limit){.limit_max=lmax,.limit_min=lmin,.diff=lmax-lmin,.is_static=figure->dragger.xlimit.is_static};
-  for (size_t i = 0; i < figure->dragger.visible_data; ++i, y++) {
-    double x = (size_t)figure->dragger.xdata[y] % (size_t)figure->dragger.timeframe; // donot treat minimoves like real spacings
-    figure->dragger.xdata_shared[i] = RC_DATA_IN_LIMIT(figure->dragger.xdata[y], figure->dragger.xlimit) ? (figure->dragger.xdata[y] - (x + lmin)) / diff : NAN;
-  }
+  double lmax,lmin;
+  lmin=figure->dragger.xdata[y];
+  lmin-=figure->dragger.timeframe/2.f;//if visible_data=1 then lmax-lmin=0
+  lmax=figure->dragger.xdata[y+figure->dragger.vlen-1];
+  lmax+=figure->dragger.timeframe/2.f;//if visible_data=1 then lmax-lmin=0
+  figure->dragger.locator.limit=(Limit){.limit_max=lmax,.limit_min=lmin,.diff=lmax-lmin,.is_static=figure->dragger.locator.limit.is_static};
+  for (size_t i = 0; i < figure->dragger.vlen; ++i,++y)figure->dragger.xdata_shared[i]=(double)i/figure->dragger.vlen;
+  figure->label_length=snprintf(NULL,0,"%.5f",lmax);
 }
 
-Figure *create_figure(char* figskel,int *fig_size, char *window_title, Rc_Color background_color,float border_percentage, int fps, size_t font_size, int font_spacing,char* font_path){
+Figure *create_figure(char* figskel,int *fig_size, char *window_title, Color background_color,float border_percentage, int fps, size_t font_size, int font_spacing,char* font_path){
   Skel s=skel_create(figskel);
   if (border_percentage < 0.f || border_percentage >= 1.f) {RC_WARN("border_percentage is %f\n", border_percentage);}
   if (font_size == 0) {RC_ERROR("font_size is 0\n");}
@@ -397,6 +391,8 @@ Figure *create_figure(char* figskel,int *fig_size, char *window_title, Rc_Color 
       .fps = fps,
       .font_size = font_size,
       .font_spacing = font_spacing,
+      .label_font_ex=0,
+      .zoomx_padding=0.f,
       .border_percentage = border_percentage,
       // .dragger=set by calling set_dragger
       .title =NULL,
@@ -406,19 +402,23 @@ Figure *create_figure(char* figskel,int *fig_size, char *window_title, Rc_Color 
       .cols = s.cols,
       .axes_skels = axes_skels_dyn,
       .axes_skels_copy = s.skel,
+      .label_length=0,
       .axes = NULL,
       .border_dimensions = border_dimensions,
-      .font = cm_malloc(sizeof(Font), RC_ECHO(Font)),
+      .font=cm_malloc(sizeof(Font),RC_ECHO(font)),
+      .label_font=cm_malloc(sizeof(Font),RC_ECHO(label_font)),      
       .font_path=string_create_from_format(0,NULL,"%s",font_path),
       .mouseinfo = (MouseInfo){.down = false, .wait_up = false},
       .axes_frame_color = BLACK,
       .background_color = background_color,
       .text_color = BLACK,
       .sds = SCREEN_DIMENSION_STATE_DEFAULT,
-      .show_cursors = false,
+      .show_cursors=true,
       .force_update=true,
       .has_dragger=false,
       .clear_screen=false,
+      .show_xlabels=true,
+      .show_ylabels=true,
   };
   create_axes(figure, s.labels);
   cm_free_ptrv(&s.labels);
@@ -431,7 +431,7 @@ void show(Figure* figure){
   RC_ASSERT(figure->sds == SCREEN_DIMENSION_STATE_DEFAULT);
   figure->sds = SCREEN_DIMENSION_STATE_CHANGED;
   if(figure->has_dragger){
-    update_from_position(figure->dragger.cur_position,figure);
+    update_from_position(figure->dragger.start,figure);
   }
   raylib_init(figure);
   axes_set_legend(figure);
@@ -450,38 +450,34 @@ void show(Figure* figure){
 void figure_set_title(Figure *figure, char *title) {
   RC_ASSERT(title!=NULL);
   if (figure->title != NULL){string_destroy(figure->title);}
-  else{
-    //force update
-    figure->force_update=true;
-  }
+  else figure->force_update=true;
   figure->title = string_create_from_format(0,NULL,"%s",title);
 }
 
-#define XLIM_FORMAT_LEN 128
-void set_dragger(Figure *figure, Dragger dragger) {
-  if (figure->has_dragger||figure->dragger.len_data != 0 || figure->sds != SCREEN_DIMENSION_STATE_DEFAULT){RC_ERROR("'%s' may only be called once before InitWindow\n", RC_ECHO(set_dragger));}
-  if (dragger.len_data == 0) {RC_ERROR("Dragger len_data is 0, no xdata?\n");}
-  if (dragger.visible_data == 0) {dragger.visible_data = dragger.len_data;}
-  if (dragger.visible_data > dragger.len_data) {RC_ERROR("dragger.visible_data>dragger.len_data\n");}
-  if (dragger.update_len > dragger.visible_data) {RC_ERROR("update length(%zu)  must be <= visible data (%zu)\n", dragger.update_len, dragger.visible_data);}
-  // set spacing. it must not be a nan or 0.
-  if (dragger.timeframe < 0.f) {RC_ERROR("spacing must not be NaN or zero\n");}
-  dragger.cur_position = dragger.visible_data;
-  dragger.start = dragger.cur_position - dragger.visible_data;
-  if (dragger.xlim_format == NULL && dragger.xformatter != FORMATTER_NULL_FORMATTER) {
-    RC_ERROR("'%s' is NULL but formatter '%s' is not '%s'\n", RC_ECHO(dragger.xlim_format), RC_ECHO(dragger.formatter), RC_ECHO(FORMATTER_NULL_FORMATTER));
+
+
+void set_dragger(Figure* figure,size_t len,size_t timeframe,double* xdata,FormatterType ftype,char* format){
+  if (figure->has_dragger){RC_ERROR("'%s' may only be called once before InitWindow\n", RC_ECHO(set_dragger));}
+  Dragger dragger={0};
+  if ((dragger._len=len) == 0) {RC_ERROR("dragger.len is 0, no xdata?\n");} 
+  dragger.vlen=RC_INITIAL_VISIBLE_DATA<len?RC_INITIAL_VISIBLE_DATA:len;
+  RC_ASSERT(dragger.vlen<=RC_MAX_PLOTTABLE_LEN);
+  dragger.ulen=RC_UPDATE_LEN>RC_INITIAL_VISIBLE_DATA?RC_INITIAL_VISIBLE_DATA-RC_UPDATE_LEN:RC_UPDATE_LEN;
+  if ((dragger.timeframe=timeframe)==0) {RC_ERROR("spacing is  zero\n");}
+  dragger.start = 0;
+  if (format == NULL && ftype != FORMATTER_NULL_FORMATTER) {
+    RC_ERROR("'%s' is NULL but formatter '%s' is not '%s'\n", RC_ECHO(format), RC_ECHO(FormatterType), RC_ECHO(FORMATTER_NULL_FORMATTER));
   }
-  Str buffer = string_create(XLIM_FORMAT_LEN,NULL);
-  string_append(buffer,"%s",dragger.xlim_format);
-  dragger.xlim_format=buffer;
-  dragger.xdata_shared = cm_malloc(dragger.visible_data * sizeof(double), RC_ECHO(dragger.xdata_shared));
+  dragger.locator.ftype=ftype;
+  dragger.locator.format=string_create_from_format(0,NULL,"%s",format?format:"[NULL]");
+  dragger.xdata_shared = cm_malloc(RC_MAX_PLOTTABLE_LEN * sizeof(double), RC_ECHO(dragger.xdata_shared));
   for (size_t i = 0; i < figure->axes_len; ++i) {
-    figure->axes[i].xdata_buffer = cm_malloc(dragger.visible_data * sizeof(double), RC_ECHO(figure->axes.xdata_buffer));
+    figure->axes[i].xdata_buffer = cm_malloc(RC_MAX_PLOTTABLE_LEN * sizeof(double), RC_ECHO(figure->axes.xdata_buffer));
   }
+  RC_ASSERT((dragger.xdata=xdata)!=NULL);
   figure->dragger = dragger;
   figure->has_dragger=true;
 }
-#undef XLIM_FORMAT_LEN
 
 void update_timeframe(Figure* figure,size_t timeframe){
   if(figure->has_dragger==false){RC_ERROR("a dragger need to be set first; call `set_dragger`\n");}

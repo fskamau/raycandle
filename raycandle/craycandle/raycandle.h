@@ -9,11 +9,19 @@ A simple library for drawing candlesticks with an api somewhat similar to matplo
 #include "raylib.h"
 #include <stddef.h>
 #include <stdint.h>
+
 #define RANDOM_PIXEL (int)(rand()%(255+1))
 #define RANDOM_COLOR() ((Color){RANDOM_PIXEL, RANDOM_PIXEL, RANDOM_PIXEL, 255})
 #define RC_LEGEND_ICON_WIDTH 50
 #define RC_LEGEND_PADDING 30
 #define AXES_FRAME_THICK 1
+
+
+typedef struct {uint8_t a,b,c,d;}CFFI_Color;
+#define CFFI_Color Color
+typedef struct{float a,b;}CFFI_Vector2;
+#define CFFI_Vector2 Vector2
+typedef char* CFFI_Str ;
 
 
 typedef enum {
@@ -22,16 +30,7 @@ typedef enum {
   SCREEN_DIMENSION_STATE_UNCHANGED = 'u', // if previous window dimension has not changed
 } ScreenDimensionState;
 
-// this `Rc_Color` type is a copy of raylib.h->Color and *only* used in this header alone for interfacing it with python CFFI
-typedef struct {
-  uint8_t r; // Rc_Color red value
-  uint8_t g; // Rc_Color green value
-  uint8_t b; // Rc_Color blue value
-  uint8_t a; // Rc_Color alpha value
-} Rc_Color;
-#define Rc_Color Color
-
-typedef enum {
+typedef enum {  
   ARTIST_TYPE_LINE = 0,
   ARTIST_TYPE_CANDLE = 1,
 } ArtistType;
@@ -46,7 +45,7 @@ typedef enum {
   FORMATTER_LINEAR_FORMATTER = 0,
   FORMATTER_TIME_FORMATTER = 1,
   FORMATTER_NULL_FORMATTER = 2,
-} Formatter;
+} FormatterType;
 
 typedef struct Artist Artist;
 typedef struct Axes Axes;
@@ -64,28 +63,26 @@ struct Limit {
   bool is_static;
 };
 
-typedef struct {
-  size_t len_data;             // len of total data which is also len of *xdata if not 0
-  size_t start;                // start inde. data being shown is from start..cur_position
-  size_t visible_data;         // len of data visible on the screen. Cannot be 0. if 0 it will be automatically set to len_data
-  size_t _visible_data;// copy used for zooming
-  size_t cur_position;         // current right-most position of visible data
-  size_t update_len;           // how much data will be updated. If 0, no data is updated
-   double *xdata; // xdata. shared by all axes' artists.
-  double *xdata_shared;        // xdata/(xlimit[1]-xlimit[0]) pre_calculated since all axes will share it
-  Limit xlimit;                // shared x-limit
-  size_t timeframe;               // spacing is xdata[x+1]-xdata[x] which must not be NaN
-  char *xlim_format;
-  Formatter xformatter;
-} Dragger;
-
 
 typedef struct {
   char *format;
   size_t flen;
   Limit limit;
-  Formatter locator_type;
+  FormatterType ftype;
 } Locator;
+
+typedef struct {
+  size_t _len;//len of data to being plotted
+  size_t start;//start of currently visible data
+  size_t vlen;//len of visible data on the screen >=1
+  size_t ulen;//len of data points to move when updating
+  size_t timeframe;//current timeframe in seconds
+  Locator locator;
+  double * xdata;//xdata, in epochs shared by all axes
+  double * xdata_shared;//scaled xdata , in epochs shared by all axes  
+}Dragger;
+
+void set_dragger(Figure* figure,size_t len,size_t timeframe,double* xdata,FormatterType ftype,char* format);
 
 struct Artist {
   Axes *parent;
@@ -94,7 +91,7 @@ struct Artist {
   Gdata gdata;
   float thickness;
   ArtistType artist_type;
-  Rc_Color *color;
+  CFFI_Color *color;
   bool ylim_consider;//whether this artist will be used to find ylims
 };
 
@@ -121,6 +118,7 @@ typedef struct {
 struct Axes {
   size_t startX, startY, width, height;
   double *xdata_buffer; // x-axis data
+  float ylabel_len,ylabel_padding;
   Figure *parent;
   char *title;
   Artist *artist;
@@ -128,17 +126,10 @@ struct Axes {
   float padding;
   Locator ylocator; // transforms pixel positions to&from data values
   Legend legend;
-  Rc_Color facecolor;
+  CFFI_Color facecolor;
   char label;
   uint8_t tableau_t10_index;
 };
-
-
-typedef char* Str;
-void string_summarize(Str);
-void string_append(Str str,const char* format,...);
-void string_clear(Str str);
-void string_print(Str str);
 
 
 typedef struct {
@@ -148,12 +139,16 @@ typedef struct {
   bool down, wait_up;
 } MouseInfo;
 
+
+
 struct Figure {
   int width;
   int height;
   int fps;
   int font_size;
+  CFFI_Vector2 label_font_ex;
   int font_spacing;
+  float zoomx_padding;
   float border_percentage;
   Dragger dragger;
   char *title,*window_title;
@@ -162,17 +157,20 @@ struct Figure {
   size_t cols;
   size_t *axes_skels;
   size_t *axes_skels_copy;
+  size_t label_length;
   Axes *axes;
   size_t *border_dimensions;
-  void *font;
-  Str font_path;
+  void* font,*label_font;
+  CFFI_Str font_path;
   MouseInfo mouseinfo;
-  Rc_Color axes_frame_color;
-  Rc_Color background_color;
-  Rc_Color text_color;
-  ScreenDimensionState sds; // if this equals SCREEN_DIMENSION_DEFAULT,  show has not been called yet
-  bool show_cursors,force_update,has_dragger,clear_screen;
+  CFFI_Color axes_frame_color;
+  CFFI_Color background_color;
+  CFFI_Color text_color;
+  ScreenDimensionState sds;
+  bool show_cursors,force_update,has_dragger,clear_screen,show_xlabels,show_ylabels;
 };
+
+
 
 /**
    args
@@ -194,7 +192,7 @@ struct Figure {
   show_cursors: whether to draw cursors. cursor are straight lines following the mouse pointer
   clear_scrren: if true, figure will  be filled with background only. bound to KEY_I
 */
-Figure *create_figure(char* figskel,int *fig_size, char *window_title, Rc_Color background_color,float border_percentage, int fps, size_t font_size, int font_spacing,char* font_path);
+Figure *create_figure(char* figskel,int *fig_size, char *window_title, CFFI_Color background_color,float border_percentage, int fps, size_t font_size, int font_spacing,char* font_path);
 /**
 show calls InitWindow which will then draw the figure on screen
  */
@@ -206,10 +204,16 @@ void axes_show_legend(Axes *axes, LegendPosition legend_position);
 void figure_set_xlim(Figure *figure, double xminmax[2]);
 void update_timeframe(Figure* figure,size_t timeframe); //set a new timeframe
 void axes_set_ylim(Axes *axes, double yminmax[2]);
-Artist *create_artist(Axes *axes, ArtistType artist_type, Gdata gdata, double ydata_minmax[2], float thickness, Rc_Color *color,void*config);
-void set_dragger(Figure *figure, Dragger dragger);
+Artist *create_artist(Axes *axes, ArtistType artist_type, Gdata gdata, double ydata_minmax[2], float thickness, CFFI_Color *color,void*config);
 void update_from_position(size_t new_position, Figure *figure); // sets the current postion to `new_position` and updates all artists
 Axes* get_axes_under_mouse(Figure* figure);
 void cm_free_all_();// frees all allocated memory
+
+
+
+#define RC_LABEL_FONT_SIZE 14
+#define RC_MAX_PLOTTABLE_LEN 500
+#define RC_UPDATE_LEN 10
+#define RC_INITIAL_VISIBLE_DATA 120
 
 #endif // __RAYCANDLE__

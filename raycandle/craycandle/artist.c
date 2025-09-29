@@ -4,6 +4,7 @@
 #include "raycandle.h"
 #include "axes.h"
 #include <string.h>
+#include "utils.h"
 
 typedef struct{
   double *d0,*d1;
@@ -46,7 +47,7 @@ static void artist_line_init(Artist* artist,void*config){
   LineData *line_data_=cm_malloc(sizeof(LineData),RC_ECHO(LineData));
   switch(line_data->line_type){
   case LINE_TYPE_S_LINE:
-    line_data_->data=cm_malloc(artist->parent->parent->dragger.visible_data*sizeof(*line_data_->data),RC_ECHO(artist->line_data.data));
+    line_data_->data=cm_malloc(RC_MAX_PLOTTABLE_LEN*sizeof(*line_data_->data),RC_ECHO(artist->line_data.data));
     break;
   case LINE_TYPE_H_LINE:
   case LINE_TYPE_V_LINE:{
@@ -90,11 +91,11 @@ static void artist_candle_init(Artist* artist,void* config){
   size_t vdata;
   CandleData* candledata;
   Color* color;
-  vdata=artist->parent->parent->dragger.visible_data;
+  vdata=RC_MAX_PLOTTABLE_LEN;
   candledata=(CandleData*)cm_malloc(sizeof(CandleData), RC_ECHO(CandleData));
   candledata->d0=artist->parent->xdata_buffer;
   candledata->d1=cm_malloc(sizeof(double)*vdata*5,RC_ECHO(CandleData->d1));
-  candledata->p0=candledata->d1+vdata;
+  candledata->p0=candledata->d1+vdata*1;
   candledata->p1=candledata->d1+vdata*2;
   candledata->p2=candledata->d1+vdata*3;
   candledata->p3=candledata->d1+vdata*4;
@@ -118,7 +119,7 @@ static void artist_line_update_data_buffer(Artist* artist,LimitChanged lim){
     case LINE_TYPE_S_LINE:{
       double* pixel_data=artist->gdata.ydata;
       size_t yindex=artist->parent->parent->dragger.start;
-        for(size_t i=0;i<artist->parent->parent->dragger.visible_data;++i,++yindex){
+        for(size_t i=0;i<artist->parent->parent->dragger.vlen;++i,++yindex){
           ydata[i]=RC_DATA_IN_LIMIT(pixel_data[yindex],artist->parent->ylocator.limit)?RC_DATA_Y_2_PIXEL(pixel_data[yindex], artist->parent):NAN;
       }
       return;
@@ -128,7 +129,7 @@ static void artist_line_update_data_buffer(Artist* artist,LimitChanged lim){
       return;
     }
     case LINE_TYPE_V_LINE:{
-      ydata[1]=RC_DATA_X_2_PIXEL(ydata[0],artist->parent);
+      /* ydata[1]=RC_DATA_X_2_PIXEL(ydata[0],artist->parent); */
       return;
     }
   default:
@@ -137,14 +138,14 @@ static void artist_line_update_data_buffer(Artist* artist,LimitChanged lim){
 }
 
 static void artist_candle_update_data_buffer(Artist* artist,LimitChanged lim){
-  size_t vdata=artist->parent->parent->dragger.visible_data;
+  size_t vdata=artist->parent->parent->dragger.vlen;
   CandleData* candledata=(CandleData*)artist->data;
-  candledata->width=(artist->parent->parent->dragger.timeframe/artist->parent->parent->dragger.xlimit.diff*artist->parent->width)/2.f;
-  size_t ldata=artist->parent->parent->dragger.len_data;
+  candledata->width=((double)artist->parent->width/artist->parent->parent->dragger.vlen)/2.f;
+  size_t ldata=artist->parent->parent->dragger._len;
   size_t yindex=artist->parent->parent->dragger.start;
   bool ogtc;
   double* cdata=artist->gdata.ydata;
-  for(size_t i=0;i<vdata&&yindex<artist->parent->parent->dragger.cur_position;++i,++yindex){
+  for(size_t i=0;i<vdata;++i,++yindex){
     if(
       !RC_DATA_IN_LIMIT(cdata[yindex],artist->parent->ylocator.limit)||
       !RC_DATA_IN_LIMIT(cdata[ldata+yindex],artist->parent->ylocator.limit)||
@@ -171,10 +172,10 @@ static void artist_line_plot(Artist *artist) {
   double *xdata = artist->parent->xdata_buffer;
   switch (line_data.line_type) {
   case LINE_TYPE_S_LINE: {
-    size_t visible_data = artist->parent->parent->dragger.visible_data;
-    Vector2 spline_buffer[visible_data];
+    size_t visible_data = artist->parent->parent->dragger.vlen;
+    Vector2 spline_buffer[visible_data];//TODO: FIX THIS
     for (size_t i = 0; i < visible_data; ++i) {spline_buffer[i] = (Vector2){xdata[i], line_data.data[i]};}
-    DrawSplineLinear(spline_buffer, artist->parent->parent->dragger.visible_data, artist->thickness, *artist->color);
+    DrawSplineLinear(spline_buffer, artist->parent->parent->dragger.vlen, artist->thickness, *artist->color);
     return;
   }
   case LINE_TYPE_H_LINE:
@@ -198,9 +199,10 @@ static void artist_candle_plot(Artist *artist){
   RC_ASSERT(artist->artist_type==ARTIST_TYPE_CANDLE);
   CandleData* candledata=(CandleData*)artist->data; 
   int width=candledata->width;
-  for(size_t cindex=0;cindex<artist->parent->parent->dragger.visible_data;++cindex){
+  for(size_t cindex=0;cindex<artist->parent->parent->dragger.vlen;++cindex){
     Color color=artist->color[candledata->color_indexes[cindex]];
     DrawRectangleLinesEx((Rectangle){candledata->d0[cindex],candledata->p1[cindex],width,RC_MAX(candledata->p2[cindex]-candledata->p1[cindex],1.f)},artist->thickness,color);
+    /* DrawRectangleV((Vector2){candledata->d0[cindex],candledata->p1[cindex]},(Vector2){width,RC_MAX(candledata->p2[cindex]-candledata->p1[cindex],1.f)},color); */
     DrawLineEx((Vector2){candledata->d1[cindex],candledata->p0[cindex]},(Vector2){candledata->d1[cindex],candledata->p1[cindex]},artist->thickness,color);
     DrawLineEx((Vector2){candledata->d1[cindex],candledata->p2[cindex]},(Vector2){candledata->d1[cindex],candledata->p3[cindex]},artist->thickness,color);
   }

@@ -21,6 +21,6 @@ void epoch2strftime(int epoch,Str buffer,const char* format);
 /*
 format mem into buffer accroding to format and formatter
 */
-void formatter_to_str(Formatter formatter,Str format,Str buffer,void* mem);
+void formatter_to_str(FormatterType ftype,Str format,Str buffer,void* mem);
 
 #endif //__RAYCANDLE_LOCATOR__

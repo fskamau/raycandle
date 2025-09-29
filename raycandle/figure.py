@@ -6,7 +6,7 @@ import os
 import cffi
 import numpy as np
 import pandas as pd
-
+import signal
 from .axes import Axes
 from .bases import (RC_Artist, RC_Axes, RC_Figure, _Api, ascii_encode,
                     window_not_closed)
@@ -57,9 +57,7 @@ class Figure(RC_Figure):
         window_title: str = None,
         fig_background=(255, 255, 255, 255),
         border_percentage: float = 1.0 / 100,
-        visible_data: int = 0,
-        update_len: int = 0,
-        fps: int = 30,
+        fps: int = 45,
         font_size: int = 20,
         font_spacing: int = 2,
     ):
@@ -67,7 +65,6 @@ class Figure(RC_Figure):
         self._xdata: np.array = None
         self._pxdata: Any = None
         self._axes: tuple[Type[RC_Axes]]
-        self.visible_data, self.update_len = visible_data, update_len
         self._load_lib()
         self._rc_api.fig = self._rc_api.lib.create_figure(
             self._rc_api.cstr(fig_skel.replace("\n"," ")),
@@ -98,7 +95,7 @@ class Figure(RC_Figure):
     @property
     @window_not_closed
     def len_data(self) -> int:
-        return self._rc_api.fig.dragger.len_data
+        return self._rc_api.fig.dragger._len
         
     def _init(self) -> None:
         self.axes = self.ax = [Axes(i, self) for i in range(self._rc_api.fig.axes_len)]
@@ -134,7 +131,7 @@ class Figure(RC_Figure):
 
     @window_not_closed
     def show_cursors(self) -> None:
-        self._rc_api.fig.show_cursors = True
+        self._rc_api.fig.show_cursors=True
 
     @window_not_closed
     def set_xdata(self, xdata: pd.Index) -> None:
@@ -159,7 +156,7 @@ class Figure(RC_Figure):
         """
         just updates the figure by recomputing all limits and adjusting data within the limit
         """
-        self._rc_api.lib.update_from_position(self._rc_api.fig.dragger.cur_position, self._rc_api.fig)
+        self._rc_api.lib.update_from_position(self._rc_api.fig.dragger.start, self._rc_api.fig)
 
     @window_not_closed
     def set_title(self, title: str) -> None:
@@ -175,17 +172,7 @@ class Figure(RC_Figure):
                 warnings.warn(f"index spacing is not equal, the most occurrent spacing ({timeframe}) will be applied", RuntimeWarning)
             self._xdata = artist.xdata.copy()
             self._pxdata = self._rc_api.ffi.cast("double*", self._xdata.ctypes.data)
-            dragger = {
-                "len_data": len(self._xdata),
-                "visible_data": self.visible_data,
-                "update_len": self.update_len,
-                "xdata": self._pxdata,
-                "xdata_shared": self._rc_api.ffi.NULL,
-                "xlim_format": self._xlim_format,
-                "xformatter": self._xformatter_type,
-                "timeframe": timeframe,
-            }
-            self._rc_api.lib.set_dragger(self._rc_api.fig, dragger)
+            self._rc_api.lib.set_dragger(self._rc_api.fig, len(self._xdata),timeframe,self._pxdata,self._xformatter_type,self._xlim_format)
         else:
             if not np.all(self._xdata == artist.xdata):
                 raise NotImplementedError("got different xdata; all artist must share x-axis")
@@ -217,3 +204,4 @@ class Figure(RC_Figure):
     @window_not_closed
     def show_legend(self) -> None:
         [x.show_legend() for x in self.ax]
+
