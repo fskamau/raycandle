@@ -396,7 +396,7 @@ Figure *create_figure(char* figskel,int *fig_size, char *window_title, Color bac
       .border_percentage = border_percentage,
       // .dragger=set by calling set_dragger
       .title =NULL,
-      .window_title=window_title?string_create_from_format(0,NULL,"%s",window_title):window_title,
+      .window_title=window_title?string_create_from_format(0,NULL,"%s",window_title):NULL,
       .axes_len = s.len,
       .rows = s.rows,
       .cols = s.cols,
@@ -419,6 +419,7 @@ Figure *create_figure(char* figskel,int *fig_size, char *window_title, Color bac
       .clear_screen=false,
       .show_xlabels=true,
       .show_ylabels=true,
+      .initialized=false,
   };
   create_axes(figure, s.labels);
   cm_free_ptrv(&s.labels);
@@ -430,10 +431,8 @@ void show(Figure* figure){
   RC_ASSERT(figure!=NULL);
   RC_ASSERT(figure->sds == SCREEN_DIMENSION_STATE_DEFAULT);
   figure->sds = SCREEN_DIMENSION_STATE_CHANGED;
-  if(figure->has_dragger){
-    update_from_position(figure->dragger.start,figure);
-  }
   raylib_init(figure);
+  figure->initialized=true;
   axes_set_legend(figure);
   //trigger updates in the first loop
   figure->force_update=true;

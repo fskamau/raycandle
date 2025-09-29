@@ -14,11 +14,10 @@ def main(example_id=None):
 
     if example_id == lnext():
         fig = raycandle.Figure(window_title="plotting lines")
+        fig.ax[0].plot(random_data)
         fig.set_title(
             "in raycandle.Figure(), without specifying visible_data, all data will be drawn"
-            ". without specifying update_len, data cannot be updated"
         )
-        fig.ax[0].plot(random_data)
         fig.show()
 
     elif example_id == lnext():
@@ -27,43 +26,6 @@ def main(example_id=None):
             12
             vb
             """,
-            window_title="figure with minimal amount of text",
-            visible_data=100,
-            update_len=10,
-        )
-        for x in fig.ax:
-            x.plot(random_data, label=str(x))
-        fig.show()
-
-    elif example_id == lnext():
-        visible_data = 500
-        fig = raycandle.Figure(visible_data=visible_data)
-        fig.set_title(
-            f"total_data={len(random_data)}; visible data is {visible_data} with no update_len (try moving around)"
-        )
-        fig.ax[0].plot(random_data)
-        fig.show()
-
-    elif example_id == lnext():
-        visible_data = 500
-        update_len = 10
-        fig = raycandle.Figure(visible_data=visible_data, update_len=update_len)
-        fig.set_title(
-            f"total_data={len(random_data)}; visible data is {visible_data} with  update_len {update_len} (try moving around)"
-        )
-        fig.ax[0].plot(random_data)
-        fig.show()
-
-    elif example_id == lnext():
-        visible_data = 100
-        update_len = 10
-        fig = raycandle.Figure(
-            """
-            12
-            vb
-            """,
-            visible_data=visible_data,
-            update_len=update_len,
         )
         fig.set_title(f"mutliple lines mutliple axes ")
         fig.ax[0].plot(random_data, label="first line")
@@ -85,8 +47,6 @@ def main(example_id=None):
             vb
             55
             """,
-            visible_data=100,
-            update_len=10,
         )
         fig.set_title("legend can be in 4 positions")
         lp = [str(x) for x in raycandle.LegendPosition]
@@ -105,8 +65,6 @@ def main(example_id=None):
             vbn
             555
             """,
-            visible_data=100,
-            update_len=10,
         )
         fig.set_title("cursors using fig.show_cursors")
         for x in range(4):
@@ -120,9 +78,7 @@ def main(example_id=None):
             """
             ab
             cd
-            """,
-            visible_data=100,
-            update_len=10,
+            """,        
         )
         fig.ax[0].plot(raycandle.Candle(df))
         fig.show_legend()
@@ -137,8 +93,6 @@ def main(example_id=None):
             cd
             ef
             """,
-            visible_data=100,
-            update_len=10,
         )
         fig.ax[0].plot(raycandle.Candle(df))
         [

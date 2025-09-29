@@ -21,7 +21,6 @@ void locator_update_data_buffers(Axes* axes,LimitChanged lim){
   }
 }
 
-#include <string.h>
 void epoch2strftime(int epoch,Str buffer,const char* format){
   unsigned int len_buffer;
   int written;
@@ -36,7 +35,6 @@ void epoch2strftime(int epoch,Str buffer,const char* format){
       exit(1);
   }
 }
-
 
 /*
 put the data under mouse position on the tooltip

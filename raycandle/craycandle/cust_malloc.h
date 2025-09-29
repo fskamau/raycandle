@@ -168,11 +168,11 @@ void _cm_free_all(const char *fname,int lineno){
     free(ptrc);
     ptrc=temp;
   }
-  //since in the same process we can alloc again, reset cm_pointer_chain
-  cm_pointer_chain=(CM_PointerChain){.ptr=NULL,.size=0,.next=NULL};
-  cm_memory_allocated=0;
   const char *size= (cm_memory_allocated > 1024.f ? (cm_memory_allocated /= 1024.f) > 1000.f ? (cm_memory_allocated /= 1024.f) > 1000.f ? (cm_memory_allocated /= 1024.f, "Gb") : "Mb" : "Kb" : "B");
   CM_INFO("freed approximately %'zu %s\n",cm_memory_allocated, size);
+  //since in the same process we can alloc again, reset cm_pointer_chain
+  cm_memory_allocated=0;
+  cm_pointer_chain=(CM_PointerChain){.ptr=NULL,.size=0,.next=NULL};
   return;
 }
 

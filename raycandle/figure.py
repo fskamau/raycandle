@@ -108,6 +108,13 @@ class Figure(RC_Figure):
         # clean afterwards
         self._rc_api.lib.cm_free_all_()
 
+    def _wait_init(self)->None:
+        """
+        return when figure is allocated in memory to prevent refrencing to NULL when
+        calling from another thread
+        """
+        while 1:
+            if self._rc_api.fig.initialized:return 
     @window_not_closed
     def show(self, block: bool = True) -> None:
         """
@@ -125,7 +132,7 @@ class Figure(RC_Figure):
         """
         if not block:
             threading.Thread(target=self._show).start()
-            return
+            return self._wait_init()
         self._show()
         self._rc_api.lib.cm_free_all_()
 
@@ -176,26 +183,6 @@ class Figure(RC_Figure):
         else:
             if not np.all(self._xdata == artist.xdata):
                 raise NotImplementedError("got different xdata; all artist must share x-axis")
-
-    @window_not_closed
-    def set_xformatter(self, xformatter_type: FormatterType, formatter_str=None):
-        if xformatter_type not in FormatterType:
-            raise Exception(f"unknown type {type(xformatter_type)}")
-        if xformatter_type == FormatterType.NULL:
-            if formatter_str is not None:
-                raise Exception("NULL formatter expects  not formatter str")
-            fstr = self._rc_api.ffi.NULL
-        else:
-            if formatter_str is None:
-                raise Exception("non-NULL formatter cannot have NULL str")
-            fstr = self._rc_api.cstr(formatter_str)
-        if self._rc_api.fig.has_dragger:
-            self._rc_api.lib.string_clear(self._rc_api.fig.dragger.xlim_format)
-            if formatter_str is not None:
-                self._rc_api.lib.string_append(self._rc_api.fig.dragger.xlim_format, self._rc_api.cstr("%s"), fstr)
-            self._rc_api.fig.dragger.xformatter = xformatter_type
-        else:
-            self._xlim_format, self._xformatter_type = fstr, xformatter_type
 
     @window_not_closed
     def set_timeframe(self, timeframe: int) -> None:

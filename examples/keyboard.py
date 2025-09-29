@@ -1,3 +1,4 @@
+
 import pandas as pd
 from random import random
 import itertools
@@ -23,8 +24,6 @@ def main(example_id=None):
     elif example_id == lnext():
         fig = raycandle.Figure(
             window_title="MOVEMENT",
-            visible_data=100,
-            update_len=10,
         )
         fig.ax[0].plot(random_data, label="random_data")
         fig.show_legend()

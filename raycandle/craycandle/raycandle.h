@@ -167,7 +167,7 @@ struct Figure {
   CFFI_Color background_color;
   CFFI_Color text_color;
   ScreenDimensionState sds;
-  bool show_cursors,force_update,has_dragger,clear_screen,show_xlabels,show_ylabels;
+  bool show_cursors,force_update,has_dragger,clear_screen,show_xlabels,show_ylabels,initialized;
 };
 
 
@@ -208,8 +208,6 @@ Artist *create_artist(Axes *axes, ArtistType artist_type, Gdata gdata, double yd
 void update_from_position(size_t new_position, Figure *figure); // sets the current postion to `new_position` and updates all artists
 Axes* get_axes_under_mouse(Figure* figure);
 void cm_free_all_();// frees all allocated memory
-
-
 
 #define RC_LABEL_FONT_SIZE 14
 #define RC_MAX_PLOTTABLE_LEN 500

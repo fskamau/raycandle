@@ -22,9 +22,7 @@ class CustomLive:
             """
             ab
             cd
-            """,
-            visible_data=100,
-            update_len=10,
+            """,    
         )
 
         df_copy = self.prepare_df(df)
@@ -51,6 +49,7 @@ class CustomLive:
         )
         fig.show_cursors()
         fig.show(False)  # no blocking
+        
 
         for index in range(CustomLive.SHOWONLY + 1, len(df_copy)):
             if fig.is_window_closed:
@@ -59,6 +58,7 @@ class CustomLive:
             new_df = CustomLive.prepare_df(new_df)
             collector.update(new_df)
             time.sleep(0.2)
+
 
     @staticmethod
     def prepare_df(df: pd.DataFrame) -> pd.DataFrame:

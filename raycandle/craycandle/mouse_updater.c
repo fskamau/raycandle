@@ -175,5 +175,6 @@ void update_from_position(size_t start,Figure* figure){
     if(!figure->axes[i].ylocator.limit.is_static){update_ylim_not_static(figure->axes+i);}
     measure_ylabel(&figure->axes[i]);
     locator_update_data_buffers(figure->axes+i, LIMIT_CHANGED_ALL_LIM);
+
   }
 }
