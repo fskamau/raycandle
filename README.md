@@ -30,13 +30,7 @@ A simple library for plotting candlesticks with an simple api similar to matplot
  make
  mv build/* ../
  cd ..
- rm -r craycandle
 ) 
-```
-
-### Now, raylib can be removed safely
-```
-rm -r raylib
 ```
 
 ### Run pip install to install (activate your environment)
