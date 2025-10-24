@@ -23,9 +23,9 @@ def ascii_encode(x: str) -> bytes:
 
 def window_not_closed(func: _T) -> _T:
     """
-    this decorator is to make sure functions that allocate memory e.g `RC_Axes.set_title`
-    should only be called when window is not closed since memory being referenced to
-    might will be invalid once the window is closed
+    make sure functions that allocate memory e.g `RC_Axes.set_title`
+    should only be called when window is has been opened and also not closed since memory being referenced to
+    might will be invalid once the window is closed or not be allocated at all
     """
 
     def wrapper(self: Type[SupportsRayCandleApi], *args: Any, **kwargs: Any):

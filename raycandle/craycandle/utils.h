@@ -22,7 +22,7 @@ double RC_PIXEL_X_2_DATA(int pixel,Axes* axes);
 #include <assert.h>
 #define RC_ASSERT assert
 #else 
-#define RC_ASSERT(cond) do {if(!(cond)){RC_ERROR("condition '%s' failed\n",#cond);}}while(0)
+#define RC_ASSERT(cond,...) do {if(!(cond)){RC_ERROR("condition '" #cond " failed ;%s\n",##__VA_ARGS__);}}while(0)
 #endif
 
 
@@ -40,6 +40,8 @@ void set_log_level(Log_Level Log_Level);
 #define RAYCANDLE_MAX_ERROR_STR 1024
 #define RC_EXIT RC_ERROR("JUST EXITED HERE\n");
 void RC_write_std(Log_Level log_level,const char file[],int line,const char func[],const char* error_format,...);
+
+
 
 static const Color tableau_colors[10] = {
     {31, 119, 191, 255},  // Blue

@@ -6,6 +6,7 @@ A simple library for drawing candlesticks with an api somewhat similar to matplo
 #define __RAYCANDLE__
 #define RAYCANDLE_DEBUG 0
 
+
 #include "raylib.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -93,6 +94,7 @@ struct Artist {
   ArtistType artist_type;
   CFFI_Color *color;
   bool ylim_consider;//whether this artist will be used to find ylims
+  bool state_changed;
 };
 
 
@@ -132,13 +134,14 @@ struct Axes {
 };
 
 
-typedef struct {
-  Axes *axes; //current Axes where the cursor is
-  float accumulator; // diffx accumulated here until they exceed x-spacing
-  int diffx;// difference between mouse-x movements
-  bool down, wait_up;
-} MouseInfo;
 
+typedef struct {
+  Axes* axes; //current Axes where the cursor is  
+  int accumulator;
+  bool dragging;
+  CFFI_Vector2 posx,posy;
+}MouseDrag;
+  
 
 
 struct Figure {
@@ -148,7 +151,7 @@ struct Figure {
   int font_size;
   CFFI_Vector2 label_font_ex;
   int font_spacing;
-  float zoomx_padding;
+  float zoomx_padding,vertical_limit_drag;
   float border_percentage;
   Dragger dragger;
   char *title,*window_title;
@@ -161,13 +164,14 @@ struct Figure {
   Axes *axes;
   size_t *border_dimensions;
   void* font,*label_font;
+  void* initialized;
   CFFI_Str font_path;
-  MouseInfo mouseinfo;
+  MouseDrag mouse_drag;
   CFFI_Color axes_frame_color;
   CFFI_Color background_color;
   CFFI_Color text_color;
-  ScreenDimensionState sds;
-  bool show_cursors,force_update,has_dragger,clear_screen,show_xlabels,show_ylabels,initialized;
+  ScreenDimensionState sds;  
+  bool show_cursors,force_update,has_dragger,clear_screen,show_xlabels,show_ylabels;
 };
 
 

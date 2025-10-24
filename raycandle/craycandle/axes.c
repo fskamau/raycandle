@@ -124,7 +124,7 @@ static void axes_draw_ylabels(Axes* axes){
     DrawTextEx(*(Font*)axes->parent->label_font,buffer,(Vector2){axes->startX+axes->width+axes->ylabel_padding,mousey-(RC_LABEL_FONT_SIZE/2.f)},RC_LABEL_FONT_SIZE,axes->parent->font_spacing,RED);
   }
 }
-
+#undef BUF_LEN
 
 void create_axes(Figure *figure,char* labels){
   figure->axes=cm_malloc(sizeof(Axes)*figure->axes_len,RC_ECHO(axes));
@@ -158,8 +158,13 @@ bool draw_axes(Axes* axes){
     if(axes->parent->sds==SCREEN_DIMENSION_STATE_CHANGED){
       locator_update_data_buffers(axes,LIMIT_CHANGED_ALL_LIM);
       }
+    if(isnan(axes->ylocator.limit.limit_min) || isnan(axes->ylocator.limit.limit_min))return true;
     axes_draw_labels(axes);
-    for(size_t i=0;i<axes->artist_len;++i){draw_artist(get_artist(axes, i));};
+    for(size_t i=0;i<axes->artist_len;++i){
+      BeginScissorMode(axes->startX, axes->startY,axes-> width, axes->height);
+      draw_artist(get_artist(axes, i));
+      EndScissorMode();
+    };
   }
   return true;
 }

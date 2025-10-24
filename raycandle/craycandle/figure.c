@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include "utils.h"
+#include "ready_signal.h"
 
 static void figure_draw_cursors(Figure *figure);                // draw cursor positions
 static bool set_real_span_skel_map(Figure *figure);             // map axes skeletons to real pixels
@@ -106,7 +107,7 @@ static Skel skel_create(char*skel_str){
 	else
 	  {
 	    if(!temp->next){
-	      CM_MALLOC(sizeof(struct Cskel),temp->next);
+	      CM_MALLOC(temp->next,sizeof(struct Cskel));
 	      *temp->next=otemp;
 	      temp=temp->next;
 	      unique_chars+=1;
@@ -139,8 +140,8 @@ static Skel skel_create(char*skel_str){
     string_destroy(str2);
   }
   if(!cols||!row)SKEL_ERROR("string contains only spaces\n");
-  CM_MALLOC(sizeof(size_t)*4*unique_chars,size_t *ld);
-  CM_MALLOC(sizeof(char)*unique_chars,char *cs);
+  CM_MALLOC(size_t *ld,sizeof(size_t)*4*unique_chars);
+  CM_MALLOC(char *cs,sizeof(char)*unique_chars);
   temp=cskel;
   while(temp){
     ld[0]=temp->sx;
@@ -167,13 +168,15 @@ static void figure_draw_cursors(Figure *figure) {
   if (axes->artist_len == 0) {return;} // all axes share same x-axis
   xdata=(double)(v.x-axes->startX)/axes->width;
   ydata=(double)(v.y-axes->startY)/axes->height;
+  /* xdata=RC_PIXEL_X_2_DATA(v.x,axes); */
+  /* ydata=RC_PIXEL_Y_2_DATA(v.y,axes); */
   for (size_t i = 0; i < figure->axes_len; ++i) {
-    axes = &figure->axes[i];
-    if (axes->artist_len == 0){continue;}
+    if ((axes = &figure->axes[i])->artist_len == 0){continue;}
     zdata=xdata*axes->width+axes->startX;
-    for (int i = axes->startY; i < (int)(axes->startY + axes->height); ++i)DrawPixel(zdata, i, figure->text_color);
+    /* if(RC_DATA_IN_LIMIT(ydata,axes->ylocator.limit));;TODO */
+    DrawLine(zdata,axes->startY,zdata,axes->startY+axes->height,figure->text_color);
     zdata= ydata*axes->height+axes->startY;
-    for (int i = axes->startX; i < (int)(axes->startX + axes->width); ++i)DrawPixel(i, zdata, figure->text_color);
+    DrawLine(axes->startX,zdata,axes->startX + axes->width,zdata,figure->text_color);
   }
 }
 
@@ -234,6 +237,8 @@ static bool set_borders(Figure *figure) {
 
   
 void raylib_init(Figure *figure){
+  RC_ASSERT(figure->sds == SCREEN_DIMENSION_STATE_DEFAULT,"show can only be called once\n");
+  figure->sds = SCREEN_DIMENSION_STATE_CHANGED;  
   SetConfigFlags(FLAG_WINDOW_RESIZABLE);
   SetConfigFlags(FLAG_MSAA_4X_HINT);
   SetTraceLogLevel(LOG_ERROR);
@@ -242,6 +247,7 @@ void raylib_init(Figure *figure){
   string_destroy(window_title);
   load_font(figure);
   update_fps(figure);
+  ready_signal_set((ReadySignal*)figure->initialized);  
 }
 
 static void update_fps(Figure *figure) {
@@ -385,6 +391,7 @@ Figure *create_figure(char* figskel,int *fig_size, char *window_title, Color bac
   size_t *axes_skels_dyn = cm_malloc(sizeof(size_t) * s.len * 4, RC_ECHO(axes_skels_dyn));
   memcpy(axes_skels_dyn, s.skel, sizeof(s.skel[0]) * s.len * 4);
   Figure *figure = cm_malloc(sizeof(Figure), RC_ECHO(Figure));
+  memset(figure,0,sizeof(*figure));
   *figure = (Figure){
       .width = fig_size[0],
       .height = fig_size[1],
@@ -393,6 +400,7 @@ Figure *create_figure(char* figskel,int *fig_size, char *window_title, Color bac
       .font_spacing = font_spacing,
       .label_font_ex=0,
       .zoomx_padding=0.f,
+      .vertical_limit_drag=0.f,
       .border_percentage = border_percentage,
       // .dragger=set by calling set_dragger
       .title =NULL,
@@ -406,9 +414,10 @@ Figure *create_figure(char* figskel,int *fig_size, char *window_title, Color bac
       .axes = NULL,
       .border_dimensions = border_dimensions,
       .font=cm_malloc(sizeof(Font),RC_ECHO(font)),
-      .label_font=cm_malloc(sizeof(Font),RC_ECHO(label_font)),      
+      .label_font=cm_malloc(sizeof(Font),RC_ECHO(label_font)),
       .font_path=string_create_from_format(0,NULL,"%s",font_path),
-      .mouseinfo = (MouseInfo){.down = false, .wait_up = false},
+      .initialized=ready_signal_create(),
+      .mouse_drag ={0},
       .axes_frame_color = BLACK,
       .background_color = background_color,
       .text_color = BLACK,
@@ -419,7 +428,6 @@ Figure *create_figure(char* figskel,int *fig_size, char *window_title, Color bac
       .clear_screen=false,
       .show_xlabels=true,
       .show_ylabels=true,
-      .initialized=false,
   };
   create_axes(figure, s.labels);
   cm_free_ptrv(&s.labels);
@@ -429,10 +437,7 @@ Figure *create_figure(char* figskel,int *fig_size, char *window_title, Color bac
 
 void show(Figure* figure){
   RC_ASSERT(figure!=NULL);
-  RC_ASSERT(figure->sds == SCREEN_DIMENSION_STATE_DEFAULT);
-  figure->sds = SCREEN_DIMENSION_STATE_CHANGED;
   raylib_init(figure);
-  figure->initialized=true;
   axes_set_legend(figure);
   //trigger updates in the first loop
   figure->force_update=true;
@@ -484,3 +489,7 @@ void update_timeframe(Figure* figure,size_t timeframe){
   figure->dragger.timeframe=timeframe;
 }
 
+void figure_wait_initialized(Figure* figure){
+  if(!((ReadySignal*)figure->initialized)->ready)RC_WARN("waiting for init figure and init window; has show or raycandle_init been called\n");
+  ready_signal_wait((ReadySignal*)figure->initialized);
+}

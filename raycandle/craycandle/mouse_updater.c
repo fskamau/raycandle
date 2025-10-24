@@ -7,6 +7,8 @@
 #include <stdbool.h>
 #include "raycandle.h"
 #include "utils.h"
+#include <string.h>
+
 static void update_from_diffx(int diffx,Figure* figure);
 static void update_ylim_not_static(Axes* axes);
 
@@ -42,10 +44,8 @@ void zoomy(Figure* figure,int move){
 
 void mouse_updates(Figure *figure){
   RC_ASSERT(figure->dragger.ulen>0);
-  MouseInfo* mouseinfo=&figure->mouseinfo;    
-  Axes * axes=mouseinfo->axes;
-  int mousex=GetMouseX();
-  uint8_t aium=get_axes_index_under_mouse(figure);
+  MouseDrag* mouse_drag=&figure->mouse_drag;
+  Axes* axes=get_axes_under_mouse(figure);
  /* 1.Pressing either left or right arrow For faster Movements*/
   int bt=(IsKeyPressed(KEY_LEFT)||IsKeyDown(KEY_LEFT)?1:IsKeyPressed(KEY_RIGHT)||IsKeyDown(KEY_RIGHT)?-1:0)*10;
   if(bt!=0){
@@ -53,46 +53,48 @@ void mouse_updates(Figure *figure){
     return;
   }
   /* 2.wheel move*/
-  if(aium!=figure->axes_len&&figure->axes[aium].artist_len!=0){
+  if(axes&&axes->artist_len!=0){
     Vector2 v=GetMouseWheelMoveV();
     if(v.y==0&&v.x!=0){return zoomx(figure,v.x);}
     if(v.x==0&&v.y!=0){return zoomy(figure,v.y);}
   }
 
-  /*3.mouse click left and drag*/
-  if(mouseinfo->wait_up){if((mouseinfo->wait_up=IsMouseButtonDown(MOUSE_LEFT_BUTTON))){return;}}
-  if(IsMouseButtonDown(MOUSE_LEFT_BUTTON)){
-    if(aium==figure->axes_len || figure->axes[aium].artist_len==0){
-    invalid_mouse_position:
+  /*3.mouse horizontal and vertical drags*/
+  if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT)&&!mouse_drag->dragging&&axes&&axes->artist_len!=0)
+    {
+      mouse_drag->dragging=true;
+      mouse_drag->axes=axes;
+    }      
+  else if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT)) {
+    memset(mouse_drag, 0, sizeof(*mouse_drag));
+    SetMouseCursor(MOUSE_CURSOR_DEFAULT);
+  }
+  if (mouse_drag->dragging){
+    if(axes!=mouse_drag->axes){//dragged outside this axes
       SetMouseCursor(MOUSE_CURSOR_DEFAULT);
-      mouseinfo->wait_up=true;
-      mouseinfo->down=false;
-      return;
-    }
-    if(mouseinfo->down){
-      if(figure->axes[aium].label!=mouseinfo->axes->label){
-        goto invalid_mouse_position;
-      }
-      if((int)mousex!=mouseinfo->diffx){
-	  mouseinfo->accumulator+=((float)mousex-mouseinfo->diffx)/mouseinfo->axes->width*axes->parent->dragger.vlen*axes->parent->dragger.timeframe;
-	  if((size_t)fabsf(mouseinfo->accumulator)>figure->dragger.timeframe){
-	    update_from_diffx((mouseinfo->accumulator>0.f?0:1)+(int)floorf(mouseinfo->accumulator/figure->dragger.timeframe),figure);
-	    mouseinfo->accumulator=0.f;
-	  }       	
-      }
-      mouseinfo->diffx=mousex;
+      memset(mouse_drag, 0, sizeof(*mouse_drag));      
     }
     else{
-      mouseinfo->down=true;
-      mouseinfo->axes=axes=figure->axes+aium;
-      SetMouseCursor(MOUSE_CURSOR_RESIZE_EW);
-      mouseinfo->diffx=mousex;
-      mouseinfo->accumulator=0.f;
+      Vector2 mouse;
+      mouse= GetMousePosition();
+      mouse_drag->posx.y=mouse.x-mouse_drag->posx.x;
+      mouse_drag->posy.y=mouse.y-mouse_drag->posy.x;
+      if(mouse_drag->posx.x!=0||mouse_drag->posy.x!=0){
+        bool horiz=fabs(mouse_drag->posx.y)>fabsf(mouse_drag->posy.y);
+        float ratio=horiz?mouse_drag->posx.y:mouse_drag->posy.y;
+        if(horiz&&mouse_drag->posx.x!=0){//horizontal
+          SetMouseCursor(MOUSE_CURSOR_RESIZE_EW);
+          update_from_diffx(ratio/axes->width*axes->parent->dragger.vlen,figure);
+        }
+        if(!horiz&&mouse_drag->posx.y!=0){//horizontal{//vertical
+          SetMouseCursor(MOUSE_CURSOR_RESIZE_NS);
+          figure->vertical_limit_drag+=ratio/axes->height;
+          axes->parent->force_update=true;
+        }
+      }
+      mouse_drag->posx.x=mouse.x;
+      mouse_drag->posy.x=mouse.y;
     }
-  }
-  else{
-    mouseinfo->down=false;
-    SetMouseCursor(MOUSE_CURSOR_DEFAULT);
   }
 
   /**
@@ -107,6 +109,13 @@ void mouse_updates(Figure *figure){
     if(figure->dragger.start>0){update_from_position(figure->dragger.start-1,figure);}
     return;
   }
+
+  //Reset
+  if(IsKeyPressed(KEY_R)){
+      figure->vertical_limit_drag=figure->zoomx_padding=0;
+      figure->dragger.vlen=RC_INITIAL_VISIBLE_DATA;
+      figure->force_update=true;      
+    }
 }
 
 /**
@@ -117,6 +126,7 @@ static void update_from_diffx(int diffx,Figure* figure){
   long int start=diffx*-1*figure->dragger.ulen+figure->dragger.start;
   start=start<0?0:start+(long int)figure->dragger.vlen>(long int)figure->dragger._len?(long int)figure->dragger._len-(long int)figure->dragger.vlen:start;
   if((size_t)start==figure->dragger.start){return;}
+
   update_from_position((size_t)start,figure);
 }
 
@@ -142,9 +152,12 @@ static void update_ylim_not_static(Axes *axes) {
       }
   }
   float diff = lmax - lmin;
+  float vertical_limit_drag=diff * axes->parent->vertical_limit_drag;
+  lmax+=vertical_limit_drag;
+  lmin+=vertical_limit_drag;
   float dadd = diff * axes->parent->zoomx_padding;
   diff += dadd * 2;
-  lmax += dadd;
+  lmax +=dadd;
   lmin -= dadd;
   axes->ylocator.limit = (Limit){.limit_max = lmax, .limit_min = lmin, .diff = diff};
 }

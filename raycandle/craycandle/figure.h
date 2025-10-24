@@ -6,5 +6,6 @@ updates the shared xlimit (updating `figure->dragger.xdata_buffer`) using figure
 */
 #define RAY_WINDOW_TITLE "Rc"
 void update_xlim(Figure* figure);
-void figure_zoom(Figure* figure, int zoom);
+/* void figure_zoom(Figure* figure, int zoom); */
+void figure_wait_initialized(Figure* figure);
 

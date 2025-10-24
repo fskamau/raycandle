@@ -120,7 +120,8 @@ static void artist_line_update_data_buffer(Artist* artist,LimitChanged lim){
       double* pixel_data=artist->gdata.ydata;
       size_t yindex=artist->parent->parent->dragger.start;
         for(size_t i=0;i<artist->parent->parent->dragger.vlen;++i,++yindex){
-          ydata[i]=RC_DATA_IN_LIMIT(pixel_data[yindex],artist->parent->ylocator.limit)?RC_DATA_Y_2_PIXEL(pixel_data[yindex], artist->parent):NAN;
+          /* ydata[i]=RC_DATA_IN_LIMIT(pixel_data[yindex],artist->parent->ylocator.limit)?RC_DATA_Y_2_PIXEL(pixel_data[yindex], artist->parent):NAN; */
+          ydata[i]=RC_DATA_Y_2_PIXEL(pixel_data[yindex], artist->parent);
       }
       return;
     }
@@ -146,15 +147,15 @@ static void artist_candle_update_data_buffer(Artist* artist,LimitChanged lim){
   bool ogtc;
   double* cdata=artist->gdata.ydata;
   for(size_t i=0;i<vdata;++i,++yindex){
-    if(
-      !RC_DATA_IN_LIMIT(cdata[yindex],artist->parent->ylocator.limit)||
-      !RC_DATA_IN_LIMIT(cdata[ldata+yindex],artist->parent->ylocator.limit)||
-      !RC_DATA_IN_LIMIT(cdata[ldata*2+yindex],artist->parent->ylocator.limit)||
-      !RC_DATA_IN_LIMIT(cdata[ldata*3+yindex],artist->parent->ylocator.limit)
-    ){
-      candledata->p0[i]=candledata->p1[i]=candledata->p2[i]=candledata->p3[i]=NAN;
-      continue;
-    }
+    /* if( */
+    /*   !RC_DATA_IN_LIMIT(cdata[yindex],artist->parent->ylocator.limit)|| */
+    /*   !RC_DATA_IN_LIMIT(cdata[ldata+yindex],artist->parent->ylocator.limit)|| */
+    /*   !RC_DATA_IN_LIMIT(cdata[ldata*2+yindex],artist->parent->ylocator.limit)|| */
+    /*   !RC_DATA_IN_LIMIT(cdata[ldata*3+yindex],artist->parent->ylocator.limit) */
+    /* ){ */
+    /*   candledata->p0[i]=candledata->p1[i]=candledata->p2[i]=candledata->p3[i]=NAN; */
+    /*   continue; */
+    /* } */
     if(lim==LIMIT_CHANGED_XLIM||lim==LIMIT_CHANGED_ALL_LIM){candledata->d1[i]=candledata->d0[i]+(candledata->width/2.f);}
     if(lim==LIMIT_CHANGED_YLIM||lim==LIMIT_CHANGED_ALL_LIM){
       ogtc=cdata[yindex]>cdata[ldata*3+yindex];

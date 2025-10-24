@@ -40,7 +40,7 @@ simple 1 header for printing calls to malloc and free (provided by stdlib)
 #endif // CM_SILENT 
 
 
-#define CM_MALLOC(bytes,target) target=cm_malloc((bytes),#target)
+#define CM_MALLOC(target,bytes) target=cm_malloc((bytes),#target)
 
 #ifndef CM_OFF
 #define cm_malloc(bytes,target) _cm_malloc((bytes),(target),__FILE__,__LINE__)
@@ -53,6 +53,8 @@ size_t cm_chain_length();//returns len of subsequent calls to malloc
 void _cm_free_all(const char *fname,int lineno);//free the chain
 
 #else //CM_OFF is defined
+#include <string.h>
+
 #define cm_malloc(bytes,_) malloc((bytes))
 #define cm_free_ptrv(ptrv)  do{void* tmp;				\
   memcpy(&tmp, ptrv, sizeof(tmp));					\
