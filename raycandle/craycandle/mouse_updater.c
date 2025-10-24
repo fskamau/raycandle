@@ -9,7 +9,7 @@
 #include "utils.h"
 #include <string.h>
 
-static void update_from_diffx(int diffx,Figure* figure);
+static void update_from_diffx(float diffx,Figure* figure);
 static void update_ylim_not_static(Axes* axes);
 
 
@@ -84,7 +84,10 @@ void mouse_updates(Figure *figure){
         float ratio=horiz?mouse_drag->posx.y:mouse_drag->posy.y;
         if(horiz&&mouse_drag->posx.x!=0){//horizontal
           SetMouseCursor(MOUSE_CURSOR_RESIZE_EW);
-          update_from_diffx(ratio/axes->width*axes->parent->dragger.vlen,figure);
+          ratio=ratio/axes->width*axes->parent->dragger.vlen;
+          /* if(ratio<1.0){mouse_drag->posy.y+=ratio;} */
+            
+          update_from_diffx(ratio,figure);
         }
         if(!horiz&&mouse_drag->posx.y!=0){//horizontal{//vertical
           SetMouseCursor(MOUSE_CURSOR_RESIZE_NS);
@@ -122,11 +125,12 @@ void mouse_updates(Figure *figure){
    convert the diff between last mousex position and the current to visible data the update the 
    figure
 */
-static void update_from_diffx(int diffx,Figure* figure){
+static void update_from_diffx(float diffx,Figure* figure){
   long int start=diffx*-1*figure->dragger.ulen+figure->dragger.start;
   start=start<0?0:start+(long int)figure->dragger.vlen>(long int)figure->dragger._len?(long int)figure->dragger._len-(long int)figure->dragger.vlen:start;
-  if((size_t)start==figure->dragger.start){return;}
-
+  if((size_t)start==figure->dragger.start){
+    return;
+  }
   update_from_position((size_t)start,figure);
 }
 
