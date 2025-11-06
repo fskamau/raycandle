@@ -28,7 +28,6 @@ A simple library for plotting candlesticks with an simple api similar to matplot
  set -e
  cd raycandle/craycandle
  make
- mv build/* ../
  cd ..
 ) 
 ```

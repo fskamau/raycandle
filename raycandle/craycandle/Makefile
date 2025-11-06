@@ -8,7 +8,7 @@ TARGET_FOLDER=./build
 SOURCES= ready_signal.c utils.c artist.c axes.c figure.c locator.c mouse_updater.c 
 OBJECTS=$(patsubst %.c,$(TARGET_FOLDER)/%.o, $(SOURCES))
 
-all: raycandle.so raycandle_for_cffi.h clean
+all: raycandle.so raycandle_for_cffi.h clean mv
 
 $(TARGET_FOLDER):
 	mkdir -p $(TARGET_FOLDER)
@@ -20,6 +20,7 @@ raycandle_for_cffi.h:raycandle.so
 	python -c "import re;lines=open('raycandle.h').readlines();\
 	print(''.join([line for line in lines if  not re.search(r'^\S*?#',line)]))"\
 	| gcc  -E -C -o $(TARGET_FOLDER)/raycandle_for_cffi.h -
-	cp build/* ../../
 clean:
 	rm $(TARGET_FOLDER)/*.o
+mv:
+	cp build/* ../
