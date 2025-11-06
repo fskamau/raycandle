@@ -212,6 +212,7 @@ Artist *create_artist(Axes *axes, ArtistType artist_type, Gdata gdata, double yd
 void update_from_position(size_t new_position, Figure *figure); // sets the current postion to `new_position` and updates all artists
 Axes* get_axes_under_mouse(Figure* figure);
 void cm_free_all_();// frees all allocated memory
+void figure_wait_initialized(Figure* figure);
 
 #define RC_LABEL_FONT_SIZE 14
 #define RC_MAX_PLOTTABLE_LEN 500

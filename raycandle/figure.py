@@ -113,8 +113,8 @@ class Figure(RC_Figure):
         return when figure is allocated in memory to prevent refrencing to NULL when
         calling from another thread
         """
-        while 1:
-            if self._rc_api.fig.initialized:return 
+        self._rc_api.lib.figure_wait_initialized(self._rc_api.fig)
+        
     @window_not_closed
     def show(self, block: bool = True) -> None:
         """
@@ -132,8 +132,10 @@ class Figure(RC_Figure):
         """
         if not block:
             threading.Thread(target=self._show).start()
-            return self._wait_init()
+            self._wait_init()
+            return
         self._show()
+        self._wait_init()
         self._rc_api.lib.cm_free_all_()
 
     @window_not_closed

@@ -247,7 +247,7 @@ void raylib_init(Figure *figure){
   string_destroy(window_title);
   load_font(figure);
   update_fps(figure);
-  ready_signal_set((ReadySignal*)figure->initialized);  
+  ready_signal_set((ReadySignal*)figure->initialized);
 }
 
 static void update_fps(Figure *figure) {
@@ -490,6 +490,6 @@ void update_timeframe(Figure* figure,size_t timeframe){
 }
 
 void figure_wait_initialized(Figure* figure){
-  if(!((ReadySignal*)figure->initialized)->ready)RC_WARN("waiting for init figure and init window; has show or raycandle_init been called\n");
   ready_signal_wait((ReadySignal*)figure->initialized);
 }
+

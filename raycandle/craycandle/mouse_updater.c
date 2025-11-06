@@ -25,7 +25,7 @@ void zoomy(Figure* figure,int move){
   start=figure->dragger.start;
   vlen=figure->dragger.vlen;
   temp=RC_MAX_PLOTTABLE_LEN>figure->dragger._len?figure->dragger._len:RC_MAX_PLOTTABLE_LEN;
-#define ZOOMING_IN move==1
+#define ZOOMING_IN move==-1
   if(ZOOMING_IN){
     vlen=vlen==temp?vlen:RC_MIN(temp,vlen+2*RC_ZOOMY_SCALE);
     start=vlen==temp?start:RC_MAX(0,start-RC_ZOOMY_SCALE);
@@ -84,12 +84,9 @@ void mouse_updates(Figure *figure){
         float ratio=horiz?mouse_drag->posx.y:mouse_drag->posy.y;
         if(horiz&&mouse_drag->posx.x!=0){//horizontal
           SetMouseCursor(MOUSE_CURSOR_RESIZE_EW);
-          ratio=ratio/axes->width*axes->parent->dragger.vlen;
-          /* if(ratio<1.0){mouse_drag->posy.y+=ratio;} */
-            
-          update_from_diffx(ratio,figure);
+          update_from_diffx(ratio/axes->width*axes->parent->dragger.vlen,figure);
         }
-        if(!horiz&&mouse_drag->posx.y!=0){//horizontal{//vertical
+        if(!horiz&&ratio!=0.f){//horizontal{//vertical
           SetMouseCursor(MOUSE_CURSOR_RESIZE_NS);
           figure->vertical_limit_drag+=ratio/axes->height;
           axes->parent->force_update=true;

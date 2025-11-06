@@ -20,5 +20,6 @@ raycandle_for_cffi.h:raycandle.so
 	python -c "import re;lines=open('raycandle.h').readlines();\
 	print(''.join([line for line in lines if  not re.search(r'^\S*?#',line)]))"\
 	| gcc  -E -C -o $(TARGET_FOLDER)/raycandle_for_cffi.h -
+	cp build/* ../../
 clean:
 	rm $(TARGET_FOLDER)/*.o
