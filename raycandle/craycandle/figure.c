@@ -22,6 +22,8 @@ static void draw_tooltip(Figure *figure);                       // draw tooltip 
 static void draw_current_time(Figure* figure);  //show current time. might be used if the app is doing nothing
 static void load_font(Figure* figure);
 
+static int processId=0;
+
 typedef struct {
   size_t len,rows,cols,*skel;
   char* labels;
@@ -436,6 +438,8 @@ Figure *create_figure(char* figskel,int *fig_size, char *window_title, Color bac
 
 
 void show(Figure* figure){
+  if(processId){RC_ERROR("OpenGL context cannot be re-initialized correctly. only one show() per process\n");}
+  processId=getpid();
   RC_ASSERT(figure!=NULL);
   raylib_init(figure);
   axes_set_legend(figure);

@@ -1,4 +1,4 @@
-import pandas as pd
+import pandas as,,, pd
 from random import random
 import itertools
 import raycandle
@@ -22,8 +22,6 @@ class CustomLive:
             ab
             cd
             """,
-            visible_data=100,
-            update_len=10,
         )  
 
         df_copy=self.prepare_df(df)
