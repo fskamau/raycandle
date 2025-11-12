@@ -45,7 +45,6 @@ class CustomLive:
         fig.show_legend()
         fig.set_title(
             "simple Live data update simulation with raycandle.Collector and fig.show(block=False)"
-            "got to the far right to see data getting added"
         )
         fig.show_cursors()
         fig.show(False)  # no blocking
@@ -56,7 +55,7 @@ class CustomLive:
             new_df = df_copy.iloc[index - CustomLive.SHOWONLY + 1 : index + 1]
             new_df = CustomLive.prepare_df(new_df)
             collector.update(new_df)
-            time.sleep(0.2)
+            time.sleep(0.5)
 
     @staticmethod
     def prepare_df(df: pd.DataFrame) -> pd.DataFrame:

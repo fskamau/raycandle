@@ -30,7 +30,9 @@ def window_not_closed(func: _T) -> _T:
 
     def wrapper(self: Type[SupportsRayCandleApi], *args: Any, **kwargs: Any):
         if self._rc_api.is_window_closed:
-            exit(f"*FATAL: Call to '{func.__name__}' ignored because window is already closed*\n")  # prevent reference to dropped memory
+            exit(
+                f"*FATAL: Call to '{func.__name__}' ignored because window is already closed*\n"
+            )  # prevent reference to dropped memory
         return func(self, *args, **kwargs)
 
     return wrapper

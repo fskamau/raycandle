@@ -41,10 +41,24 @@ class Line(RC_Artist):
         self.config.line_type = self.line_type
         self.config.data = self._rc_api.ffi.NULL
         self._ydata_pointer = self._rc_api.ffi.cast("double*", self.ydata.ctypes.data)
-        self._label = self._rc_api.cstr(self.label) if self.label is not None else self._rc_api.ffi.NULL
+        self._label = (
+            self._rc_api.cstr(self.label)
+            if self.label is not None
+            else self._rc_api.ffi.NULL
+        )
         gdata = {"cols": 1, "ydata": self._ydata_pointer, "label": self._label}
-        self._color_ptr = self._rc_api.ffi.cast("CFFI_Color*", self.color.ctypes.data if self.color is not None else self._rc_api.ffi.NULL)
-        return (ArtistType.LINE, gdata, (np.nanmin(self.ydata), np.nanmax(self.ydata)), self.thick, self._color_ptr, self.config)
+        self._color_ptr = self._rc_api.ffi.cast(
+            "CFFI_Color*",
+            self.color.ctypes.data if self.color is not None else self._rc_api.ffi.NULL,
+        )
+        return (
+            ArtistType.LINE,
+            gdata,
+            (np.nanmin(self.ydata), np.nanmax(self.ydata)),
+            self.thick,
+            self._color_ptr,
+            self.config,
+        )
 
     @override
     @window_not_closed
@@ -54,14 +68,23 @@ class Line(RC_Artist):
         if len(data) != len(self.xdata):
             raise Exception("length mismatch")
         self.ydata = data.to_numpy(dtype=np.float64)
-        self.__artist__.gdata.ydata = self._rc_api.ffi.cast("double*", self.ydata.ctypes.data)
+        self.__artist__.gdata.ydata = self._rc_api.ffi.cast(
+            "double*", self.ydata.ctypes.data
+        )
 
 
 class Candle(RC_Artist):
     GREEN = (44, 160, 44, 255)
     RED = (255, 0, 0, 255)
 
-    def __init__(self, df: pd.DataFrame, lw: float = 1.0, colors: tuple[int] = (RED, GREEN), label: str = None, label_from_data: bool = False):
+    def __init__(
+        self,
+        df: pd.DataFrame,
+        lw: float = 1.0,
+        colors: tuple[int] = (RED, GREEN),
+        label: str = None,
+        label_from_data: bool = False,
+    ):
         if (len(df.columns)) != 4:
             raise Exception("len of candle columns should be 4")
         self.__data_names__ = df.columns
@@ -79,14 +102,21 @@ class Candle(RC_Artist):
 
     @override
     def _get_create_args(self) -> tuple[Any]:
-        self._label = self._rc_api.cstr(self.label) if self.label is not None else self._rc_api.ffi.NULL
+        self._label = (
+            self._rc_api.cstr(self.label)
+            if self.label is not None
+            else self._rc_api.ffi.NULL
+        )
         self._ydata_pointer = self._rc_api.ffi.cast("double*", self.ydata.ctypes.data)
         gdata = (
             4,
             self._ydata_pointer,
             self._label,
         )
-        self._color_pointer = self._rc_api.ffi.cast("CFFI_Color*", self.color.ctypes.data if self.color is not None else self._rc_api.ffi.NULL)
+        self._color_pointer = self._rc_api.ffi.cast(
+            "CFFI_Color*",
+            self.color.ctypes.data if self.color is not None else self._rc_api.ffi.NULL,
+        )
         return (
             ArtistType.CANDLE,
             gdata,
@@ -103,4 +133,6 @@ class Candle(RC_Artist):
         if (len(data.columns)) != 4:
             raise Exception("len of candle columns should be 4")
         self.ydata = data.to_numpy(dtype=np.float64).flatten(order="F")
-        self.__artist__.gdata.ydata = self._rc_api.ffi.cast("double*", self.ydata.ctypes.data)
+        self.__artist__.gdata.ydata = self._rc_api.ffi.cast(
+            "double*", self.ydata.ctypes.data
+        )

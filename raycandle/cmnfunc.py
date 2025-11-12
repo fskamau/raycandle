@@ -61,7 +61,9 @@ def float2str(f: float) -> str:
 
 
 def scale_to_range(
-    data: Union[pd.Series, pd.DataFrame, tuple[Union[pd.Series, pd.DataFrame]]], scale_range: tuple[float], assume_range: Optional[tuple[float, float]] = None
+    data: Union[pd.Series, pd.DataFrame, tuple[Union[pd.Series, pd.DataFrame]]],
+    scale_range: tuple[float],
+    assume_range: Optional[tuple[float, float]] = None,
 ):
     """
     scales `data` to range(min_val,max_val)=`scale_range`.
@@ -90,7 +92,9 @@ def scale_to_range(
             A, B = data.min().min(), data.max().max()
         return data.apply(a)
     if isinstance(data, (tuple, list)):
-        return type(data)((map(lambda x: scale_to_range(x, scale_range, assume_range), data)))
+        return type(data)(
+            (map(lambda x: scale_to_range(x, scale_range, assume_range), data))
+        )
     raise TypeError("invalid type ", type(data))
 
 
@@ -120,11 +124,17 @@ def sma(ser: Union[pd.Series, pd.DataFrame], window: int, name: Optional[str] = 
     Simple Moving Average
     """
 
-    return pd.Series(ser.rolling(window=window).mean(), index=ser.index, name=name if name else ser.name)
+    return pd.Series(
+        ser.rolling(window=window).mean(),
+        index=ser.index,
+        name=name if name else ser.name,
+    )
 
 
 def ema(ser: Union[pd.Series, pd.DataFrame], window: int, name: Optional[str] = None):
-    return pd.Series(ser.ewm(span=window).mean(), index=ser.index, name=name if name else ser.name)
+    return pd.Series(
+        ser.ewm(span=window).mean(), index=ser.index, name=name if name else ser.name
+    )
 
 
 def convert(loc1: int):
@@ -137,7 +147,9 @@ def convert(loc1: int):
     )
 
 
-def avg_tr(low: pd.Series, high: pd.Series, close: pd.Series, window: int = 14, name="avg_tr") -> pd.Series:
+def avg_tr(
+    low: pd.Series, high: pd.Series, close: pd.Series, window: int = 14, name="avg_tr"
+) -> pd.Series:
     """
     Average true range
     """
@@ -193,7 +205,9 @@ def wma(ser: pd.Series, period: int = 10, name: Optional[str] = None):
     return pd.Series(wma, index=index, name=ser.name if name is None else name)
 
 
-def macd(ser: pd.Series, x=12, y=26, z=9, names: tuple[str, str] = ("m", "s")) -> tuple[pd.Series]:
+def macd(
+    ser: pd.Series, x=12, y=26, z=9, names: tuple[str, str] = ("m", "s")
+) -> tuple[pd.Series]:
     """
     Moving Average Convergence Divergence
     """
@@ -213,7 +227,11 @@ def roc(ser: pd.Series, period=14, name: Optional[str] = None):
     this function uses price.diff(periods)/price.shift(periods). There are many
     variations of rate of change
     """
-    return pd.Series(ser.diff(periods=period) / ser.shift(periods=period), index=ser.index, name=name if name is not None else ser.name)
+    return pd.Series(
+        ser.diff(periods=period) / ser.shift(periods=period),
+        index=ser.index,
+        name=name if name is not None else ser.name,
+    )
 
 
 def sroc(
@@ -349,14 +367,49 @@ def rsi(ser: pd.Series, period: int = 14, name: Optional[str] = None):
     return r
 
 
-def aroon(high: pd.Series, low: pd.Series, period: int = 14, names: list["str"] = ["aroon_up", "aroon_down"]) -> tuple[pd.Series, pd.Series]:
+def aroon(
+    high: pd.Series,
+    low: pd.Series,
+    period: int = 14,
+    names: list["str"] = ["aroon_up", "aroon_down"],
+) -> tuple[pd.Series, pd.Series]:
     return (
-        pd.Series(100 * ((period - (high.rolling(window=period).apply(lambda x: period - np.argmax(x), raw=True))) / period), name=names[0]),
-        pd.Series(100 * ((period - (low.rolling(window=period).apply(lambda x: period - np.argmin(x), raw=True))) / period), name=names[1]),
+        pd.Series(
+            100
+            * (
+                (
+                    period
+                    - (
+                        high.rolling(window=period).apply(
+                            lambda x: period - np.argmax(x), raw=True
+                        )
+                    )
+                )
+                / period
+            ),
+            name=names[0],
+        ),
+        pd.Series(
+            100
+            * (
+                (
+                    period
+                    - (
+                        low.rolling(window=period).apply(
+                            lambda x: period - np.argmin(x), raw=True
+                        )
+                    )
+                )
+                / period
+            ),
+            name=names[1],
+        ),
     )
 
 
-def bollinger_bands(ser: pd.Series, window: int = 30, names: tuple[str, str, str] = ["ub", "mb", "lb"]) -> tuple[pd.Series, pd.Series, pd.Series]:
+def bollinger_bands(
+    ser: pd.Series, window: int = 30, names: tuple[str, str, str] = ["ub", "mb", "lb"]
+) -> tuple[pd.Series, pd.Series, pd.Series]:
     mb = ser.rolling(window=window).mean()
     y = ser.rolling(window=window).std()
     ub = mb + 2 * y
@@ -371,7 +424,12 @@ def printall():
     pd.set_option("display.max_rows", None)
     pd.set_option("display.max_columns", None)
     pd.set_option("display.float_format", "{:8.6f}".format)
-    np.set_printoptions(precision=4, suppress=True, legacy="1.13", formatter={"str_kind": lambda x: x, "float": "{:8.3f}".format})
+    np.set_printoptions(
+        precision=4,
+        suppress=True,
+        legacy="1.13",
+        formatter={"str_kind": lambda x: x, "float": "{:8.3f}".format},
+    )
 
 
 def mpl2datetime2int(mpl_time: float):
@@ -387,7 +445,9 @@ def epoch2readable(epoch: int, format: str = FORMAT) -> str:
     return datetime.fromtimestamp(epoch).strftime(format)
 
 
-def time_to_nearest(relation: int, epoch: Optional[int] = None, format: str = FORMAT) -> str:
+def time_to_nearest(
+    relation: int, epoch: Optional[int] = None, format: str = FORMAT
+) -> str:
     """
     return
     ------
@@ -408,7 +468,9 @@ def epoch_to_nearest(relation: int, epoch: Optional[int] = None) -> int:
     return int(epoch - (epoch % relation))
 
 
-def find_index(df: pd.DataFrame, index: float, strict: bool = True) -> Optional[Union[int, tuple[float, float]]]:
+def find_index(
+    df: pd.DataFrame, index: float, strict: bool = True
+) -> Optional[Union[int, tuple[float, float]]]:
     """
     finds the location of `index` in the `df.index` IFF the indexing is in ascending order.
     ---
@@ -425,7 +487,9 @@ def find_index(df: pd.DataFrame, index: float, strict: bool = True) -> Optional[
 
     match = pd.Series(df.index[df.index >= index])
     if not match.is_monotonic_increasing:
-        raise NotImplementedError("for now, find_index may only be used for indexes with ascending order")
+        raise NotImplementedError(
+            "for now, find_index may only be used for indexes with ascending order"
+        )
     if match.empty:
         return None
     if match.iloc[0] != index and strict:
@@ -436,7 +500,9 @@ def find_index(df: pd.DataFrame, index: float, strict: bool = True) -> Optional[
     return index
 
 
-def get_lim(data: Union[pd.DataFrame, pd.Series, tuple[pd.Series]], ratio: float = 0.05) -> tuple[float, float]:
+def get_lim(
+    data: Union[pd.DataFrame, pd.Series, tuple[pd.Series]], ratio: float = 0.05
+) -> tuple[float, float]:
     """
     gets the data max and min limits.
     return tuple[min,max] limits
@@ -454,7 +520,9 @@ def get_lim(data: Union[pd.DataFrame, pd.Series, tuple[pd.Series]], ratio: float
     return lims
 
 
-def last_at(data: Union[pd.DataFrame, pd.Series], at: list[Union[int, float]]) -> list[Union[int, list[int]]]:
+def last_at(
+    data: Union[pd.DataFrame, pd.Series], at: list[Union[int, float]]
+) -> list[Union[int, list[int]]]:
     """
     returns all integer indexes where data was `at`
     ::
@@ -479,13 +547,21 @@ def last_at(data: Union[pd.DataFrame, pd.Series], at: list[Union[int, float]]) -
             if x.empty:
                 last.append([])
                 break
-            last.append(d.iloc[pd.Series(x[x != 1.0].index) - 1].to_list() + [d.iloc[-1]])
+            last.append(
+                d.iloc[pd.Series(x[x != 1.0].index) - 1].to_list() + [d.iloc[-1]]
+            )
         return last[0] if len(at) == 1 else last
 
-    return [_last_at(data[col], at) for col in data] if isinstance(data, pd.DataFrame) else _last_at(data, at)
+    return (
+        [_last_at(data[col], at) for col in data]
+        if isinstance(data, pd.DataFrame)
+        else _last_at(data, at)
+    )
 
 
-def loc2iloc(loc: Union[Any, Iterable[Any]], data: Union[pd.Series, pd.DataFrame]) -> Union[int, tuple[int]]:
+def loc2iloc(
+    loc: Union[Any, Iterable[Any]], data: Union[pd.Series, pd.DataFrame]
+) -> Union[int, tuple[int]]:
     """
     returns an integer locator from the locator in `df`.
     will raise an IndexError if `loc` is not present.
@@ -552,9 +628,23 @@ def adx(
     """
     average_true_range = avg_tr(low, high, close, window=window)
     hm_previous_h = high - high.shift(window if shift_with_window else 1)
-    previous_l_ml = (low - low.shift(window if shift_with_window else 1)) if low_shift_m_low else (low.shift(window if shift_with_window else 1) - low)
-    positive_dx = pd.Series(np.where((hm_previous_h > previous_l_ml) & (hm_previous_h > 0), hm_previous_h, 0), index=low.index)
-    negative_dx = pd.Series(np.where((previous_l_ml > hm_previous_h) & (previous_l_ml > 0), previous_l_ml, 0), index=low.index)
+    previous_l_ml = (
+        (low - low.shift(window if shift_with_window else 1))
+        if low_shift_m_low
+        else (low.shift(window if shift_with_window else 1) - low)
+    )
+    positive_dx = pd.Series(
+        np.where(
+            (hm_previous_h > previous_l_ml) & (hm_previous_h > 0), hm_previous_h, 0
+        ),
+        index=low.index,
+    )
+    negative_dx = pd.Series(
+        np.where(
+            (previous_l_ml > hm_previous_h) & (previous_l_ml > 0), previous_l_ml, 0
+        ),
+        index=low.index,
+    )
     smoothed_positive_dx = positive_dx.ewm(alpha=1 / window, adjust=False).mean()
     smoothed_negative_dx = negative_dx.ewm(alpha=1 / window, adjust=False).mean()
     positive_dmi = (smoothed_positive_dx / average_true_range) * 100
@@ -566,12 +656,20 @@ def adx(
     return [positive_dmi, negative_dmi, adx][: len(names)]
 
 
-def cci(low: pd.Series, high: pd.Series, close: pd.Series, window: int = 14, name: Optional[str] = None):
+def cci(
+    low: pd.Series,
+    high: pd.Series,
+    close: pd.Series,
+    window: int = 14,
+    name: Optional[str] = None,
+):
     """
     Commodity Channel Index.
     """
     typical_price = (close + high + low) / 3
-    c = (typical_price - sma(typical_price, window)) / (0.015 * (typical_price - typical_price.mean()).abs().mean())
+    c = (typical_price - sma(typical_price, window)) / (
+        0.015 * (typical_price - typical_price.mean()).abs().mean()
+    )
     if name:
         c.name = name
     return c
@@ -615,7 +713,10 @@ def fake_stock_data(length: int = 600, seconds: int = 600) -> pd.DataFrame:
     low_prices = open_prices - low_spread
     close_prices = low_prices + (high_prices - low_prices) * np.random.rand(length)
 
-    df = pd.DataFrame({"o": open_prices, "h": high_prices, "l": low_prices, "c": close_prices}, index=epoch_index)
+    df = pd.DataFrame(
+        {"o": open_prices, "h": high_prices, "l": low_prices, "c": close_prices},
+        index=epoch_index,
+    )
 
     df.index.name = "d"
     return df
