@@ -18,11 +18,12 @@ double RC_PIXEL_X_2_DATA(int pixel,Axes* axes);
 #define RC_ECHO(__any) #__any
 #define FIGURE_FONT(__pfigure)  (*(Font*)(__pfigure)->font)
 
+
 #if RAYCANDLE_DEBUG
 #include <assert.h>
-#define RC_ASSERT assert
+#define RC_ASSERT(cond,...) assert(cond)
 #else 
-#define RC_ASSERT(cond,...) do {if(!(cond)){RC_ERROR("condition '" #cond " failed ;%s\n",##__VA_ARGS__);}}while(0)
+#define RC_ASSERT(cond,...) do {if(!(cond)){RC_ERROR("condition '" #cond"' failed ;" __VA_ARGS__);}}while(0)
 #endif
 
 
