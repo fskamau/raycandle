@@ -43,10 +43,12 @@ void zoomy(Figure* figure,int move){
 }
 
 void mouse_updates(Figure *figure){
-  RC_ASSERT(figure->dragger.ulen>0);
+  RC_ASSERT(figure->dragger.ulen>0,"cannot update if upate len is 0\n");
+  Vector2 mouse;
+  mouse= GetMousePosition();
   MouseDrag* mouse_drag=&figure->mouse_drag;
   Axes* axes=get_axes_under_mouse(figure);
- /* 1.Pressing either left or right arrow For faster Movements*/
+  /* 1.Pressing either left or right arrow For faster Movements*/
   int bt=(IsKeyPressed(KEY_LEFT)||IsKeyDown(KEY_LEFT)?1:IsKeyPressed(KEY_RIGHT)||IsKeyDown(KEY_RIGHT)?-1:0)*10;
   if(bt!=0){
     update_from_diffx(bt, figure);
@@ -75,8 +77,6 @@ void mouse_updates(Figure *figure){
       memset(mouse_drag, 0, sizeof(*mouse_drag));      
     }
     else{
-      Vector2 mouse;
-      mouse= GetMousePosition();
       mouse_drag->posx.y=mouse.x-mouse_drag->posx.x;
       mouse_drag->posy.y=mouse.y-mouse_drag->posy.x;
       if(mouse_drag->posx.x!=0||mouse_drag->posy.x!=0){
@@ -112,10 +112,15 @@ void mouse_updates(Figure *figure){
 
   //Reset
   if(IsKeyPressed(KEY_R)){
-      figure->vertical_limit_drag=figure->zoomx_padding=0;
-      figure->dragger.vlen=RC_INITIAL_VISIBLE_DATA;
-      figure->force_update=true;      
-    }
+    long int start;
+    float ratio=axes?(float)(mouse.x-axes->startX)/axes->width:0.5f;
+    start=figure->dragger.start+(figure->dragger.vlen*ratio)-(RC_INITIAL_VISIBLE_DATA*ratio);
+    figure->vertical_limit_drag=figure->zoomx_padding=0;
+    figure->dragger.vlen=RC_INITIAL_VISIBLE_DATA;    
+    start=fmin(fmax(start,0),figure->dragger._len-figure->dragger.vlen);
+    figure->dragger.start=start;
+    figure->force_update=true;
+  }
 }
 
 /**
@@ -139,18 +144,18 @@ static void update_ylim_not_static(Axes *axes) {
   for (size_t a = 0; a < axes->artist_len; ++a) {
     Artist artist = *get_artist(axes, a);
     if (!artist.ylim_consider)continue;
-      RC_ASSERT(artist.gdata.ydata != NULL && artist.gdata.cols > 0);
-      for (size_t i = 0; i < artist.gdata.cols; ++i) {
-        double *ydata = &(*artist.gdata.ydata) + (i * axes->parent->dragger._len);
-        for (size_t s = start; s < axes->parent->dragger.vlen+start; s++) {
-          value = ydata[s];
-          if (!isfinite(value)) {
-            continue;
-          }
-          lmax = RC_MAX(lmax, value);
-          lmin = RC_MIN(lmin, value);
+    RC_ASSERT(artist.gdata.ydata != NULL && artist.gdata.cols > 0);
+    for (size_t i = 0; i < artist.gdata.cols; ++i) {
+      double *ydata = &(*artist.gdata.ydata) + (i * axes->parent->dragger._len);
+      for (size_t s = start; s < axes->parent->dragger.vlen+start; s++) {
+        value = ydata[s];
+        if (!isfinite(value)) {
+          continue;
         }
+        lmax = RC_MAX(lmax, value);
+        lmin = RC_MIN(lmin, value);
       }
+    }
   }
   float diff = lmax - lmin;
   float vertical_limit_drag=diff * axes->parent->vertical_limit_drag;
@@ -165,7 +170,7 @@ static void update_ylim_not_static(Axes *axes) {
 
 #define BUF_LEN 128
 void measure_ylabel(Axes* axes){
-    char _buffer[BUF_LEN]={0};
+  char _buffer[BUF_LEN]={0};
   Str string=string_create(BUF_LEN,_buffer);
   string_append(string,"    %.5f ",axes->ylocator.limit.limit_min);
   axes->ylabel_len=MeasureTextEx(*(Font*)axes->parent->label_font,string,RC_LABEL_FONT_SIZE,axes->parent->font_spacing).x;
