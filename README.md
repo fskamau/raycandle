@@ -45,11 +45,7 @@ A simple library for plotting candlesticks with an simple api similar to matplot
  which should display something closer to 
  ![simple window](examples/simple_window.png)
   
-### You may run examples with 
-  ```python
-  python examples/run-all-examples.py 
-  ```	 
-  or any example in then ![*/examples*](examples/) folder
+More examples are available in ![*/examples*](examples/) folder
   
   #### Simple png of a simple window 
   ![Simple window screenshot](examples/example.png)
