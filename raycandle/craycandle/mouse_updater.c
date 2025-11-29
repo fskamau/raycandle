@@ -27,13 +27,13 @@ void zoomy(Figure* figure,int move){
   temp=RC_MAX_PLOTTABLE_LEN>figure->dragger._len?figure->dragger._len:RC_MAX_PLOTTABLE_LEN;
 #define ZOOMING_IN move==-1
   if(ZOOMING_IN){
-    vlen=vlen==temp?vlen:RC_MIN(temp,vlen+2*RC_ZOOMY_SCALE);
-    start=vlen==temp?start:RC_MAX(0,start-RC_ZOOMY_SCALE);
+    vlen=vlen==temp?vlen:minl(temp,vlen+2*RC_ZOOMY_SCALE);
+    start=vlen==temp?start:maxl(0,start-RC_ZOOMY_SCALE);
     if(start+vlen>(long int)figure->dragger._len)start=figure->dragger._len-vlen;
   }
   else
     {
-      vlen=vlen==1?1:RC_MAX(1,vlen-2*RC_ZOOMY_SCALE);
+      vlen=vlen==1?1:maxl(1,vlen-2*RC_ZOOMY_SCALE);
       start=vlen==1?start:start+RC_ZOOMY_SCALE;
       if(start+vlen>(long int)figure->dragger._len)start=figure->dragger._len-1;
     }
@@ -117,7 +117,7 @@ void mouse_updates(Figure *figure){
     start=figure->dragger.start+(figure->dragger.vlen*ratio)-(RC_INITIAL_VISIBLE_DATA*ratio);
     figure->vertical_limit_drag=figure->zoomx_padding=0;
     figure->dragger.vlen=RC_INITIAL_VISIBLE_DATA;    
-    start=fmin(fmax(start,0),figure->dragger._len-figure->dragger.vlen);
+    start=minl(maxl(start,0),figure->dragger._len-figure->dragger.vlen);
     figure->dragger.start=start;
     figure->force_update=true;
   }
@@ -152,8 +152,8 @@ static void update_ylim_not_static(Axes *axes) {
         if (!isfinite(value)) {
           continue;
         }
-        lmax = RC_MAX(lmax, value);
-        lmin = RC_MIN(lmin, value);
+        lmax = fmax(lmax, value);
+        lmin = fmin(lmin, value);
       }
     }
   }

@@ -13,6 +13,24 @@
 static Log_Level RC_Log_Level_Min=LOG_LEVEL_INFO;
 
 
+long int maxl(long int a,long int b){
+  return (a>b)? a:b;
+}
+
+long int minl(long int a,long int b){
+  return (a<b)?a:b;
+}
+
+Color FadeToBlack(Color c, float amount) {
+    Color out;
+    out.r = c.r * (1 - amount);
+    out.g = c.g * (1 - amount);
+    out.b = c.b * (1 - amount);
+    out.a = c.a;
+    return out;
+}
+
+
 void RC_write_std(Log_Level log_level,const char file[],int line,const char func[],const char error_format[],...){
   if(log_level!=LOG_LEVEL_INFO && log_level!=LOG_LEVEL_WARN&&log_level!=LOG_LEVEL_ERROR){RC_ERROR("Unkown log level %d\n",log_level);}
   if(log_level<RC_Log_Level_Min&&log_level!=LOG_LEVEL_ERROR){return;} //we allow errors to pass
@@ -70,10 +88,6 @@ Color axes_get_next_tableau_t10_color(Axes* axes){
   Color color =tableau_colors[(axes->tableau_t10_index++)];
   axes->tableau_t10_index%=10;
   return color;
-}
-
-void cm_free_all_(void){
-  cm_free_all();
 }
 
 

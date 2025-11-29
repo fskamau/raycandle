@@ -1,20 +1,21 @@
+/*
+*allocated string and returns a printable adress to start of the string
+*if mem is NULL, string will be dynamic otherwise, it maybe a stack one
+*Please NOTE:
+*  1.The string structure is stored inside the string use string_len to get the length
+*     #define LEN 16
+*     char mystr[LEN]={0};
+*     char* str=string_create(LEN,mystr);
+*  string_len(str)=LEN-sizeof(_String)-1(due to \0)
+*  2. A dynamic string len will not change. i.e
+*     char* str=string_create(LEN,NULL);
+*     string_len(str)=LEN
+*  3.string_create_formatted may take len=0 and mem=NULL to allocate the formatted string in memory
+ */
+
+
 #ifndef __CS__//custom_string
 #define __CS__
-
-/*
-allocated string and returns a printable adress to start of the string
-if mem is NULL, string will be dynamic otherwise, it maybe a stack one
-Please NOTE Carefully:
-  1.The string structure is stored inside the string use string_len to get the length
-     #define LEN 16
-     char mystr[LEN]={0};
-     char* str=string_create(LEN,mystr);
-  string_len(str)=LEN-sizeof(_String)-1(due to \0)
-  2. A dynamic string len will not change. i.e
-     char* str=string_create(LEN,NULL);
-     string_len(str)=LEN
-  3.string_create_formatted may take len=0 and mem=NULL to allocate the formatted string in memory
- */
 
 typedef char* Str;
 
@@ -42,10 +43,9 @@ void string_clear(Str str);
 #define CM_IMPLEMENTATION
 #include "cust_malloc.h"
 
-#define STRING_ERROR(format,...)do{				\
-    fprintf(stderr,"%s:%d: _StringError: ",__FILE__,__LINE__);	\
-    fprintf(stderr,format ,##__VA_ARGS__);exit(1);}		\
-  while(0)
+#define STRING_ERROR(format,...)do {\
+    fprintf(stderr,"%s:%d: %s [string]: "format,__FILE__,__LINE__,__func__,##__VA_ARGS__);} \
+    while(0)
 
 #define STRING_CHECK_CONDITION(cond,msg) do{				\
     if(!(cond)) STRING_ERROR("condition %s failed%s%s\n",#cond,(msg)?": ":"",(msg)?msg:"");} \
@@ -81,7 +81,7 @@ static inline  void _string_append(Str str, const char* format,va_list args,unsi
     va_copy(args2,args);
     if((newl=vsnprintf(NULL,0,format,args2))+sl>string->capacity){
       newl-=string->capacity-sl;
-      STRING_ERROR(string_create_from_format(0,NULL,"need more space to fit %d item%s\n",newl,newl==1?"":"s"));
+      STRING_ERROR("need more space to fit %d item%s : %s\n",newl,newl==1?"":"s",format);
     }
     va_end(args2);
   }else STRING_CHECK_CONDITION(total_length<=string->capacity,"");
@@ -170,6 +170,7 @@ void string_summarize(Str str){
   _String* string=string_get(str);
   printf("String(capacity=%'d len=%'zu, inheap=%d)\n",string->capacity,strlen(str),!string->stack);
 }
+
 
 void string_destroy(Str str){
   _String* string=string_get(str);

@@ -202,7 +202,7 @@ static void artist_candle_plot(Artist *artist){
   int width=candledata->width;
   for(size_t cindex=0;cindex<artist->parent->parent->dragger.vlen;++cindex){
     Color color=artist->color[candledata->color_indexes[cindex]];
-    DrawRectangleLinesEx((Rectangle){candledata->d0[cindex],candledata->p1[cindex],width,RC_MAX(candledata->p2[cindex]-candledata->p1[cindex],1.f)},artist->thickness,color);
+    DrawRectangleLinesEx((Rectangle){candledata->d0[cindex],candledata->p1[cindex],width,fmax(candledata->p2[cindex]-candledata->p1[cindex],1.f)},artist->thickness,color);
     /* DrawRectangleV((Vector2){candledata->d0[cindex],candledata->p1[cindex]},(Vector2){width,RC_MAX(candledata->p2[cindex]-candledata->p1[cindex],1.f)},color); */
     DrawLineEx((Vector2){candledata->d1[cindex],candledata->p0[cindex]},(Vector2){candledata->d1[cindex],candledata->p1[cindex]},artist->thickness,color);
     DrawLineEx((Vector2){candledata->d1[cindex],candledata->p2[cindex]},(Vector2){candledata->d1[cindex],candledata->p3[cindex]},artist->thickness,color);
@@ -284,8 +284,8 @@ Artist *create_artist(Axes* axes,ArtistType artist_type,Gdata gdata,double ydata
   if(!axes->ylocator.limit.is_static){
     if(axes->artist_len==0){axes->ylocator.limit=(Limit){.is_static=false,.limit_min=ydata_minmax[0],.limit_max=ydata_minmax[1],.diff=ydata_minmax[1]-ydata_minmax[0]};}
     else{
-        axes->ylocator.limit.limit_min = RC_MIN(axes->ylocator.limit.limit_min, ydata_minmax[0]);
-        axes->ylocator.limit.limit_max = RC_MAX(axes->ylocator.limit.limit_max, ydata_minmax[1]);
+        axes->ylocator.limit.limit_min = fmin(axes->ylocator.limit.limit_min, ydata_minmax[0]);
+        axes->ylocator.limit.limit_max = fmax(axes->ylocator.limit.limit_max, ydata_minmax[1]);
         axes->ylocator.limit.diff=axes->ylocator.limit.limit_max-axes->ylocator.limit.limit_min;
     } 
   }

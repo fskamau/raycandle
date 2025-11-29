@@ -66,7 +66,7 @@ static void axes_draw_legend(Axes *axes){
     default:
       RC_ERROR("unreachable condition! %d %d %d\n",axes->legend.legend_position,startx,starty);
   }  
-  DrawRectangleLinesEx((Rectangle){startx, starty, axes->legend.width+RC_LEGEND_PADDING, axes->legend.height},2,RC_faded_color_from(axes->facecolor));
+  DrawRectangleLinesEx((Rectangle){startx, starty, axes->legend.width+RC_LEGEND_PADDING, axes->legend.height},2,FadeToBlack(axes->facecolor,0.2));
   startx+=paddingdiv;
   for(size_t i=0;i<axes->artist_len;++i){
     Artist* artist=get_artist(axes, i);
@@ -100,7 +100,7 @@ static void axes_draw_xlabels(Axes* axes){
   //TODO 
 }
 
-#define BUF_LEN 32
+#define BUF_LEN 320
 static void axes_draw_ylabels(Axes* axes){  
   if(!axes->parent->show_ylabels)return;
   int sx=axes->startX+axes->width;
@@ -114,7 +114,7 @@ static void axes_draw_ylabels(Axes* axes){
     rh=((double)i)/(ylabel_count+1)*axes->height;
     if(aium && (fabsf(rh+axes->startY-mousey)<RC_LABEL_FONT_SIZE))continue;
     string_clear(buffer);
-    string_append(buffer,"%.5f",axes->label,(1.f-((double)rh/axes->height))*axes->ylocator.limit.diff+axes->ylocator.limit.limit_min);
+    string_append(buffer,"%.5f",(1.f-((double)rh/axes->height))*axes->ylocator.limit.diff+axes->ylocator.limit.limit_min);
     DrawTextEx(*(Font*)axes->parent->label_font,buffer,(Vector2){sx+axes->ylabel_padding,rh+axes->startY-(RC_LABEL_FONT_SIZE/2.f)},RC_LABEL_FONT_SIZE,axes->parent->font_spacing,BLACK);
     DrawLine(sx,rh+axes->startY,axes->width+(axes->startX+0.75*axes->ylabel_padding),rh+axes->startY,BLUE);
   }
@@ -192,7 +192,7 @@ void axes_set_legend(Figure* figure){
       char* label=get_artist(axes, a)->gdata.label;
       if(label==NULL){continue;;}
       axes->legend.height+=figure->font_size;
-      axes->legend.width=RC_MAX(axes->legend.width,(int)MeasureTextEx(FIGURE_FONT(axes->parent),label,axes->parent->font_size,axes->parent->font_spacing).x);
+      axes->legend.width=maxl(axes->legend.width,(int)MeasureTextEx(FIGURE_FONT(axes->parent),label,axes->parent->font_size,axes->parent->font_spacing).x);
     }
     axes->legend.width+=RC_LEGEND_ICON_WIDTH;
   }

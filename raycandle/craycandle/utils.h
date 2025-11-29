@@ -12,8 +12,10 @@ double RC_PIXEL_X_2_DATA(int pixel,Axes* axes);
 #define RC_DATA_Y_2_PIXEL(data, axes) (((((axes)->ylocator.limit.limit_max - (data)) / (axes)->ylocator.limit.diff) * (axes)->height) + (axes)->startY)
 #define RC_COLOR1_EQUALS_COLOR2(color1, color2) ((color1).r == (color2).r && (color1).g == (color2).g && (color1).b == (color2).b && (color1).a == (color2).a)
 
-#define RC_MIN(val, min) ((val) < (min) ? (val) : (min))
-#define RC_MAX(val, max) ((val) > (max) ? (val) : (max))
+
+
+long int maxl(long int a,long int b);
+long int minl(long int a,long int b);
 
 #define RC_ECHO(__any) #__any
 #define FIGURE_FONT(__pfigure)  (*(Font*)(__pfigure)->font)
@@ -63,9 +65,11 @@ typedef enum {
   RC_ALIGNMENT_RIGHT,
 } Rc_Alignment;
 
+
+Color FadeToBlack(Color c, float amount) ;
+
 float align_text(Font font, const char *text, int width, int font_size, int spacing,Rc_Alignment alignment); // returns startx for the text
 
-Color RC_faded_color_from(Color original);
 Color axes_get_next_tableau_t10_color(Axes *axes);
 
 /*
