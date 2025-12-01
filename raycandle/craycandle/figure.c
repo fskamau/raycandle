@@ -172,12 +172,9 @@ static void figure_draw_cursors(Figure *figure) {
   if (axes->artist_len == 0) {return;} // all axes share same x-axis
   xdata=(double)(v.x-axes->startX)/axes->width;
   ydata=(double)(v.y-axes->startY)/axes->height;
-  /* xdata=RC_PIXEL_X_2_DATA(v.x,axes); */
-  /* ydata=RC_PIXEL_Y_2_DATA(v.y,axes); */
   for (size_t i = 0; i < figure->axes_len; ++i) {
-    if ((axes = &figure->axes[i])->artist_len == 0){continue;}
+    if ((axes = &figure->axes[i])->artist_len == 0){continue;} 
     zdata=xdata*axes->width+axes->startX;
-    /* if(RC_DATA_IN_LIMIT(ydata,axes->ylocator.limit));;TODO */
     DrawLine(zdata,axes->startY,zdata,axes->startY+axes->height,figure->text_color);
     zdata= ydata*axes->height+axes->startY;
     DrawLine(axes->startX,zdata,axes->startX + axes->width,zdata,figure->text_color);
@@ -387,12 +384,14 @@ void update_xlim(Figure *figure) {
 }
 
 Figure *create_figure(char* figskel,int *fig_size, char *window_title, Color background_color,float border_percentage, int fps, size_t font_size, int font_spacing,char* font_path){
-  Fas s=fas_parse(figskel);
+  Skel s=skel_create(figskel);
+  fas_print(fas_parse(figskel));
+  
   if (border_percentage < 0.f || border_percentage >= 1.f) {RC_WARN("border_percentage is %f\n", border_percentage);}
   if (font_size == 0) {RC_ERROR("font_size is 0\n");}
   setlocale(LC_NUMERIC, "");
   size_t *border_dimensions = cm_malloc(sizeof(size_t) * 2, RC_ECHO(border_dimensions));
-  unsigned int *axes_skels_dyn = cm_malloc(sizeof(s.skel[0]) * s.len * 4, RC_ECHO(axes_skels_dyn));
+  size_t *axes_skels_dyn = cm_malloc(sizeof(size_t) * s.len * 4, RC_ECHO(axes_skels_dyn));
   memcpy(axes_skels_dyn, s.skel, sizeof(s.skel[0]) * s.len * 4);
   Figure *figure = cm_malloc(sizeof(Figure), RC_ECHO(Figure));
   memset(figure,0,sizeof(*figure));

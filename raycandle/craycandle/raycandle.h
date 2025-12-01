@@ -158,8 +158,8 @@ struct Figure {
   size_t axes_len;
   size_t rows;
   size_t cols;
-  unsigned int *axes_skels;
-  unsigned int *axes_skels_copy;
+  size_t *axes_skels;
+  size_t *axes_skels_copy;
   size_t label_length;
   Axes *axes;
   size_t *border_dimensions;

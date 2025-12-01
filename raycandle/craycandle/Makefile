@@ -3,7 +3,7 @@ CC=gcc
 export PKG_CONFIG_PATH=../../raylib/lib/pkgconfig
 export PKG_CONFIG_PATH=$(HOME)/opt/lib/raylib/lib/pkgconfig
 
-CFLAGS=-Wextra -Wall -O3 -fPIC  -std=c99 $(shell pkg-config --cflags raylib)
+CFLAGS=-Wextra -Wall -O0 -fPIC  -std=c99 $(shell pkg-config --cflags raylib)
 LDFLAGS=$(shell pkg-config --libs raylib)
 TARGET_FOLDER=./build
 SOURCES=ready_signal.c utils.c artist.c axes.c fas.c figure.c locator.c mouse_updater.c 

@@ -13,32 +13,23 @@
     exit(EXIT_FAILURE);                             \
   }while(0)
 
-
-void fas_print(Fas fas){
-  printf("Fas(len: %d rows: %d cols: %d)\n",fas.len,fas.rows,fas.cols);
-}
-
-
 typedef struct As As;
 struct As {
   As* next;
   uint32_t x,y,w,h;
   char c;
 };//axes skeleton
-#define FAS_AS_IS_EQUAL(as1,as2) ((as1).x==(as2).x&&(as1).y==(as2).y&&  \
-                                  (as1).w==(as2).w&&(as1).h==(as2).h&&(as1).c==(as2).c)
+#define FAS_AS_IS_EQUAL(as1,as2) ((as1).x==(as2).x&&(as1).y==(as2).y&&(as1).w==(as2).w&&(as1).h==(as2).h&&(as1).c==(as2).c)
 
 static As* as_create(void);
 static As* as_get_as_by_char(As* parent, char c);
 void as_print(As* as);
-
 
 static As* as_create(void){
   CM_MALLOC(As *as,sizeof(As));
   memset(as,0,sizeof(As));
   return as;
 }
-
 
 static As* as_get_as_by_char(As* parent, char c){
   while(parent->c!='\0'){
@@ -57,7 +48,7 @@ As* as_add(As* parent,As child){
   As *as_new=as_get_as_by_char(parent,child.c);
   if(as_new!=NULL)return as_new;    
   while(parent->next!=NULL)
-    {parent=parent->next;}
+    parent=parent->next;
   as_new=as_create();
   *as_new=child;
   as_new->next=NULL;
@@ -152,12 +143,12 @@ Fas fas_parse(char *outline){
                   as->y+as->h-1,temp_row,temp_col);}
     }
   }
-  CM_MALLOC(unsigned int *skel,sizeof(*skel)*4*rows);
-  CM_MALLOC(char* labels,sizeof(*labels)*rows);
+  CM_MALLOC(unsigned int *skel,sizeof(*skel)*4*as_len);
+  CM_MALLOC(char* labels,sizeof(*labels)*as_len);
   unsigned int counter=0;
   while(parent!=NULL){
     unsigned int buffer[4]={parent->x-1,parent->y-1,parent->w,parent->h};
-    memcpy(skel+counter*4,buffer,4);
+    memcpy(skel+counter*4,buffer,4*sizeof(*skel));
     labels[counter]=parent->c;
     counter+=1;
     as=parent;
@@ -169,10 +160,13 @@ Fas fas_parse(char *outline){
   return fas;
 }
 
-/* int main(){ */
-/*   Fas fas=fas_parse("    ad\ */
-/*     eh\ */
-/*     01    pp"); */
-/*   fas_print(fas); */
-/*   return 0; */
-/* } */
+
+void fas_print(Fas fas){
+  printf("Fas(len: %d rows: %d cols: %d skel=[\n",fas.len,fas.rows,fas.cols);
+  unsigned int* ld=fas.skel;
+  for(size_t i=0;i<fas.len;++i){
+    printf(" %c=[%d %d %d %d],\n",
+           fas.labels[i],(ld+(i*4))[0],(ld+(i*4))[1],(ld+(i*4))[2],(ld+(i*4))[3]);
+  }
+  printf("])\n");
+}
