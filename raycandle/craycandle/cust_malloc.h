@@ -112,7 +112,7 @@ typedef struct {
 }PointerChainInfo_t;
 
 static PointerChain PointerChain_v = {.size=0, .next = NULL};
-static PointerChainInfo_t PointerChainInfo={0,0};
+static PointerChainInfo_t PointerChainInfo={.allocated=0,.chain_length=0};
 
 #define CM_ERROR(format,...)do {\
     fprintf(stderr,"%s:%d: error: %s "format,fname,lineno,func,##__VA_ARGS__); \
@@ -120,7 +120,8 @@ static PointerChainInfo_t PointerChainInfo={0,0};
   } while (0)
 
 #define CM_INFO(format, ...)do {\
-    if(!(CM_SILENT))fprintf(stdout,"%s:%d: info %s "format,fname,lineno,func,##__VA_ARGS__); \
+    if(!(CM_SILENT))                                                    \
+      fprintf(stdout,"%s:%d: info in %s "format,fname,lineno,func,##__VA_ARGS__); \
   }while(0)
     
 
@@ -139,9 +140,9 @@ void *CM_FUNCTION_ADD_FLF(cm_malloc_,size_t bytes, const char *target){
   ptrc->next=NULL;
   PointerChainInfo.allocated += bytes;
   PointerChainInfo.chain_length+=1;
-  CM_INFO("malloc@%zu: %p %'10zub total %'10zu target: %s/%s\n",PointerChainInfo.chain_length,
-          (char*)ptrc+sizeof(PointerChain),bytes,PointerChainInfo.allocated,
-          fname,target);
+  CM_INFO("malloc@%zu: %p %'zu bytes total %'10zu target: %s/%s\n",
+          PointerChainInfo.chain_length,(char*)ptrc+sizeof(PointerChain),
+          bytes,PointerChainInfo.allocated,fname,target);
   return (char*)ptrc+sizeof(PointerChain);
 }
 
@@ -151,11 +152,12 @@ void CM_FUNCTION_ADD_FLF(cm_free_ptrv_,void *ptrv){
   size_t id=0;
   if(ptrv==NULL)CM_ERROR("cannot free NULL\n");
   void *ptr = *(char **)ptrv;
-  if (ptr==NULL )CM_ERROR("ptrv points to null; expects an &ptr not the ptr itself\n");
+  if (ptr==NULL )
+    CM_ERROR("ptrv points to null; expects an &ptr not the ptr itself\n");
   ptr-=sizeof(PointerChain);
   while (ptrc->next!=NULL) {
     if (ptrc->next == ptr) {
-      CM_INFO("free_ptrv@%zu %p %'zub\n",id, ptrv, ptrc->next->size);
+      CM_INFO("free_ptrv@%zu %p %'10zu\n",id, *(void**)ptrv, ptrc->next->size);
       PointerChainInfo.chain_length-=1;
       PointerChainInfo.allocated-=ptrc->next->size;
       ptrc->next=ptrc->next->next; // join the remaining structs

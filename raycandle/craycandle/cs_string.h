@@ -43,9 +43,10 @@ void string_clear(Str str);
 #define CM_IMPLEMENTATION
 #include "cust_malloc.h"
 
-#define STRING_ERROR(format,...)do {\
-    fprintf(stderr,"%s:%d: %s [string]: "format,__FILE__,__LINE__,__func__,##__VA_ARGS__);} \
-    while(0)
+#define STRING_ERROR(format,...)do {                                    \
+    fprintf(stderr,"%s:%d: %s [string]: "format,__FILE__,__LINE__,__func__,##__VA_ARGS__); \
+    exit(EXIT_FAILURE);                                                 \
+  }while(0)
 
 #define STRING_CHECK_CONDITION(cond,msg) do{				\
     if(!(cond)) STRING_ERROR("condition %s failed%s%s\n",#cond,(msg)?": ":"",(msg)?msg:"");} \

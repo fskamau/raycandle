@@ -12,6 +12,7 @@
 #include <sys/time.h>
 #include "utils.h"
 #include "ready_signal.h"
+#include "fas.h"
 
 static void figure_draw_cursors(Figure *figure);                // draw cursor positions
 static bool set_real_span_skel_map(Figure *figure);             // map axes skeletons to real pixels
@@ -29,10 +30,10 @@ typedef struct {
   char* labels;
   }Skel;
 
-#define SKEL_ERROR(format,...)do{			\
-    fprintf(stderr,"%s:%d: ",__FILE__,__LINE__);	\
-    fprintf(stderr,format ,##__VA_ARGS__);exit(1);}	\
-  while(0)
+#define SKEL_ERROR(format,...)do{                                       \
+    fprintf(stderr,"%s:%d: "format ,__FILE__,__LINE__,##__VA_ARGS__);   \
+    exit(EXIT_FAILURE);                                                 \
+  }while(0)
 
 static Skel skel_create(char*skel_str){
   if(!skel_str)SKEL_ERROR("Cannot be null\n");
@@ -64,7 +65,8 @@ static Skel skel_create(char*skel_str){
 	  cols=(index-col_start)+1;
 	}
 	else if((index-col_start)+1!=cols)
-	  {SKEL_ERROR("unequal cols; expected %d got %d in row %d \n",cols,(index-col_start)+1,row);}	
+	  {
+        SKEL_ERROR("unequal cols; expected %d got %d in row %d \n",cols,(index-col_start)+1,row);}	
       }
       col+=1;
     }
@@ -385,12 +387,12 @@ void update_xlim(Figure *figure) {
 }
 
 Figure *create_figure(char* figskel,int *fig_size, char *window_title, Color background_color,float border_percentage, int fps, size_t font_size, int font_spacing,char* font_path){
-  Skel s=skel_create(figskel);
+  Fas s=fas_parse(figskel);
   if (border_percentage < 0.f || border_percentage >= 1.f) {RC_WARN("border_percentage is %f\n", border_percentage);}
   if (font_size == 0) {RC_ERROR("font_size is 0\n");}
   setlocale(LC_NUMERIC, "");
   size_t *border_dimensions = cm_malloc(sizeof(size_t) * 2, RC_ECHO(border_dimensions));
-  size_t *axes_skels_dyn = cm_malloc(sizeof(size_t) * s.len * 4, RC_ECHO(axes_skels_dyn));
+  unsigned int *axes_skels_dyn = cm_malloc(sizeof(s.skel[0]) * s.len * 4, RC_ECHO(axes_skels_dyn));
   memcpy(axes_skels_dyn, s.skel, sizeof(s.skel[0]) * s.len * 4);
   Figure *figure = cm_malloc(sizeof(Figure), RC_ECHO(Figure));
   memset(figure,0,sizeof(*figure));

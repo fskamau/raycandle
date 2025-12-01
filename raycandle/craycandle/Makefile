@@ -1,15 +1,16 @@
 CC=gcc
 
 export PKG_CONFIG_PATH=../../raylib/lib/pkgconfig
-
+export PKG_CONFIG_PATH=$(HOME)/opt/lib/raylib/lib/pkgconfig
 
 CFLAGS=-Wextra -Wall -O3 -fPIC  -std=c99 $(shell pkg-config --cflags raylib)
 LDFLAGS=$(shell pkg-config --libs raylib)
 TARGET_FOLDER=./build
-SOURCES=ready_signal.c utils.c artist.c axes.c figure.c locator.c mouse_updater.c 
+SOURCES=ready_signal.c utils.c artist.c axes.c fas.c figure.c locator.c mouse_updater.c 
 OBJECTS=$(patsubst %.c,$(TARGET_FOLDER)/%.o, $(SOURCES))
 
 all: raycandle.so raycandle_for_cffi.h clean mv
+
 
 $(TARGET_FOLDER):
 	mkdir -p $(TARGET_FOLDER)
