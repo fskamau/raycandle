@@ -1,12 +1,11 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#define CM_OFF
 #include "cust_malloc.h"
 #include "raycandle.h"
 
 #include "log.h"
-
-
 
 #define RC_DATA_IN_LIMIT(data, limit)                                          \
   (((limit).limit_min <= ((data))) && (data) <= ((limit).limit_max))

@@ -41,7 +41,6 @@ void epoch2strftime(int epoch, Str buffer, const char *format) {
   if (written == 0) {
     fprintf(stderr, "strftime(%s) would exceed buffer size of %d bytes.\n",
             format, len_buffer);
-    cm_free_all();
     exit(1);
   }
 }

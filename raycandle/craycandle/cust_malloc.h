@@ -14,35 +14,26 @@
  *     #include "cust_malloc.h"
  *
  * Allocate mem:
- *     int *array = cm_malloc(sizeof(int)*100, "p");
- *               OR
+ *
  *     CM_MALLOC(int*array,sizeof(int)*100);
  *
  * Free a:
- *     cm_free_ptrv(&array);
+ *     CM_FREE(array);
  *
  * Free_everything:
- *     cm_free_all();
+ *     CM_FREE_ALL();
  *
  *
  * OPTIONAL MACROS
  * ----------------
  * 1. CM_OFF
  *      Disable all tracking.
- *      cm_malloc → malloc
- *      cm_free_ptrv → free
- *      cm_free_all / cm_chain_length / cm_malloc_size / cm_pointer_chain_print
- * → unavailable
+ *      CM_MALLOC → malloc
+ *      CM_FREE → free
+ *      cm_free_all / cm_chain_length / CM_MALLOC_size / cm_pointer_chain_print  ->unavailable
  *
  * 2. CM_SILENT
  *      If nonzero, suppress all INFO logging (errors still print).
- *
- *
- * ERROR BEHAVIOR
- * --------------
- * Any fatal error:
- *     - logs to stderr
- *     - program exits(1)
  *
  *
  *When satisfied, default to malloc and free with #define CM_OFF
@@ -58,40 +49,38 @@
 #define CM_SILENT 0
 #endif // CM_SILENT
 
-#define CM_MALLOC(target, bytes) target = cm_malloc((bytes), #target)
+#ifdef CM_OFF
+#include <string.h>
+#define CM_MALLOC(target,bytes) target=malloc(bytes)
+#define CM_FREE(target) free(target)
 
-#ifndef CM_OFF
+#define cm_malloc_size cm_malloc_size_is_undefined_when_CM_OFF_is_defined
+#define cm_chain_length cm_chain_length_is_undefined_when_CM_OFF_is_defined
+#define cm_free_all cm_free_all_is_undefined_when_CM_OFF_is_defined
+#define cm_pointer_chain_print  cm_pointer_chain_print_is_undefined_when_CM_OFF_is_defined
+
+
+#else // CM_OFF is not defined
+
+#define CM_MALLOC(target, bytes) target = CM_DEFINE_ADD_FLF(cm_malloc,(bytes), #target)
+#define CM_FREE(target) CM_DEFINE_ADD_FLF(cm_free,&(target))
+#define CM_FREE_ALL() CM_DEFINE_ADD_FLF(cm_free_all)
+
+
 
 #define CM_DEFINE_ADD_FLF(f, ...)                                              \
   f(__VA_ARGS__ __VA_OPT__(, ) __FILE__, __LINE__, __func__)
 #define CM_FUNCTION_ADD_FLF(f, ...)                                            \
   f(__VA_ARGS__ __VA_OPT__(, ) const char *fname, int lineno, const char *func)
 
-#define cm_malloc(bytes, target) CM_DEFINE_ADD_FLF(cm_malloc_, bytes, target)
-#define cm_free_ptrv(ptrv) CM_DEFINE_ADD_FLF(cm_free_ptrv_, ptrv)
-#define cm_free_all() CM_DEFINE_ADD_FLF(cm_free_all_)
 
-void *CM_FUNCTION_ADD_FLF(cm_malloc_, size_t bytes, const char *target);
-void CM_FUNCTION_ADD_FLF(cm_free_ptrv_, void *ptrv);
+void *CM_FUNCTION_ADD_FLF(cm_malloc, size_t bytes, const char *target);
+void CM_FUNCTION_ADD_FLF(cm_free, void *ptrv);
 size_t cm_malloc_size();  // returns bytes allocated
 size_t cm_chain_length(); // returns len of subsequent calls to malloc
-void CM_FUNCTION_ADD_FLF(cm_free_all_); // free the chain
+void CM_FUNCTION_ADD_FLF(cm_free_all); // free the chain
 void cm_pointer_chain_print();          // print the chain
 
-#else // CM_OFF is defined
-#include <string.h>
-
-#define cm_malloc(bytes, _) malloc((bytes))
-#define cm_free_ptrv(ptrv)                                                     \
-  do {                                                                         \
-    free(*(void **)(ptrv));                                                    \
-    *(void **)(ptrv) = NULL;                                                   \
-  } while (0)
-
-#define cm_malloc_size cm_malloc_size_is_undefined_when_CM_OFF_is_defined
-#define cm_chain_length cm_chain_length_is_undefined_when_CM_OFF_is_defined
-#define cm_free_all cm_free_all_is_undefined_when_CM_OFF_is_defined
-#define cm_pointer_chain_print  cm_pointer_chain_print_is_undefined_when_CM_OFF_is_defined
 #endif // CM_OFF
 
 #ifdef CM_IMPLEMENTATION
@@ -115,21 +104,19 @@ static PointerChain PointerChain_v = {.size = 0, .next = NULL};
 static PointerChainInfo_t PointerChainInfo = {.allocated = 0,
                                               .chain_length = 0};
 
-#define CM_ERROR(format, ...)                                                  \
-  do {                                                                         \
-    fprintf(stderr, "%s:%d: error: %s " format, fname, lineno, func,           \
-            ##__VA_ARGS__);                                                    \
-    exit(EXIT_FAILURE);                                                        \
+#define CM_ERROR(format, ...)                                           \
+  do {                                                                  \
+    fprintf(stderr, "%s:%d: error: %s " format, fname, lineno, func,##__VA_ARGS__); \
+    exit(EXIT_FAILURE);                                                 \
   } while (0)
 
-#define CM_INFO(format, ...)                                                   \
-  do {                                                                         \
-    if (!(CM_SILENT))                                                          \
-      fprintf(stdout, "%s:%d: info in %s " format, fname, lineno, func,        \
-              ##__VA_ARGS__);                                                  \
+#define CM_INFO(format, ...)                                            \
+  do {                                                                  \
+    if (!(CM_SILENT))                                                   \
+      fprintf(stdout, "%s:%d: info in %s " format, fname, lineno, func,##__VA_ARGS__); \
   } while (0)
 
-void *CM_FUNCTION_ADD_FLF(cm_malloc_, size_t bytes, const char *target) {
+void *CM_FUNCTION_ADD_FLF(cm_malloc, size_t bytes, const char *target) {
   if (bytes == 0) {
     CM_ERROR("cannot malloc 0 bytes for target '%s'\n", target);
   }
@@ -152,14 +139,12 @@ void *CM_FUNCTION_ADD_FLF(cm_malloc_, size_t bytes, const char *target) {
   return (char *)ptrc + sizeof(PointerChain);
 }
 
-void CM_FUNCTION_ADD_FLF(cm_free_ptrv_, void *ptrv) {
+void CM_FUNCTION_ADD_FLF(cm_free, void *ptrv) {
   PointerChain *ptrc = &PointerChain_v;
   size_t id = 0;
-  if (ptrv == NULL)
+  void *ptr = *(void **)ptrv;
+  if (ptr==NULL)
     CM_ERROR("cannot free NULL\n");
-  void *ptr = *(char **)ptrv;
-  if (ptr == NULL)
-    CM_ERROR("ptrv points to null; expects an &ptr not the ptr itself\n");
   ptr -= sizeof(PointerChain);
   while (ptrc->next != NULL) {
     if (ptrc->next == ptr) {
@@ -180,12 +165,12 @@ void CM_FUNCTION_ADD_FLF(cm_free_ptrv_, void *ptrv) {
 
 size_t cm_chain_length() { return PointerChainInfo.chain_length; }
 
-void CM_FUNCTION_ADD_FLF(cm_free_all_) {
+void CM_FUNCTION_ADD_FLF(cm_free_all) {
   CM_INFO("Before free_all: allocated %'10zu chain length %6zu\n",
           PointerChainInfo.allocated, PointerChainInfo.chain_length);
   while (PointerChain_v.next != NULL) {
     void *p = ((char *)PointerChain_v.next + sizeof(PointerChain));
-    cm_free_ptrv(&p);
+    CM_FREE(p);
   }
   if (PointerChainInfo.allocated != 0 || PointerChainInfo.chain_length != 0)
     CM_ERROR("corrupt chain\n");

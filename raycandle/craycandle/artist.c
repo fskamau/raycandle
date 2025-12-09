@@ -46,19 +46,16 @@ static void artist_init(Artist *artist, void *config) {
 static void artist_line_init(Artist *artist, void *config) {
   LineData *line_data = (LineData *)config;
   RC_ASSERT(line_data && !line_data->data);
-  LineData *line_data_ = cm_malloc(sizeof(LineData), RC_ECHO(LineData));
+  CM_MALLOC(LineData *line_data_ , (sizeof(LineData)));
   switch (line_data->line_type) {
-  case LINE_TYPE_S_LINE:
-    line_data_->data =
-        cm_malloc(RC_MAX_PLOTTABLE_LEN * sizeof(*line_data_->data),
-                  RC_ECHO(artist->line_data.data));
+  case LINE_TYPE_S_LINE:    
+    CM_MALLOC(line_data_->data,RC_MAX_PLOTTABLE_LEN * sizeof(*line_data_->data));
     break;
   case LINE_TYPE_H_LINE:
   case LINE_TYPE_V_LINE: {
     RC_ASSERT(artist->gdata.ydata && artist->gdata.ydata[0] >= 0 &&
               artist->gdata.ydata[0] <= 1);
-    line_data_->data =
-        cm_malloc(sizeof(*line_data->data) * 2, RC_ECHO(line_data_->data));
+    CM_MALLOC(line_data_->data,sizeof(*line_data->data) * 2);
     line_data_->data[0] = artist->gdata.ydata[0];
     artist->gdata.ydata = NULL;
     artist->ylim_consider = false; // these two are not used in finding ylims
@@ -70,7 +67,7 @@ static void artist_line_init(Artist *artist, void *config) {
   }
   line_data_->line_type = line_data->line_type;
   artist->data = line_data_;
-  Color *color = cm_malloc(sizeof(Color), RC_ECHO(line_color));
+  Color *CM_MALLOC(color,sizeof(Color));
   if (!artist->color) {
     *color = axes_get_next_tableau_t10_color(artist->parent);
   } else {
@@ -101,19 +98,16 @@ static void artist_candle_init(Artist *artist, void *config) {
   CandleData *candledata;
   Color *color;
   vdata = RC_MAX_PLOTTABLE_LEN;
-  candledata = (CandleData *)cm_malloc(sizeof(CandleData), RC_ECHO(CandleData));
+  CM_MALLOC(candledata,sizeof(CandleData));
   candledata->d0 = artist->parent->xdata_buffer;
-  candledata->d1 =
-      cm_malloc(sizeof(double) * vdata * 5, RC_ECHO(CandleData->d1));
+  CM_MALLOC(candledata->d1,sizeof(double) * vdata * 5);
   candledata->p0 = candledata->d1 + vdata * 1;
   candledata->p1 = candledata->d1 + vdata * 2;
   candledata->p2 = candledata->d1 + vdata * 3;
   candledata->p3 = candledata->d1 + vdata * 4;
-  candledata->color_indexes =
-      cm_malloc(sizeof(*candledata->color_indexes) * vdata,
-                RC_ECHO(CandleData.color_indexes));
+  CM_MALLOC(candledata->color_indexes ,sizeof(*candledata->color_indexes) * vdata);
   artist->data = (void *)candledata;
-  color = cm_malloc(sizeof(Color) * 2, RC_ECHO(candle_color));
+  CM_MALLOC(color,sizeof(Color) * 2);
   if (artist->color == NULL) {
     color[0] = axes_get_next_tableau_t10_color(artist->parent);
     color[1] = axes_get_next_tableau_t10_color(artist->parent);
@@ -324,7 +318,7 @@ void artist_draw_icon(Artist *artist, Vector2 startPos) {
 Artist *create_artist(Axes *axes, ArtistType artist_type, Gdata gdata,
                       double ydata_minmax[2], float thickness, Color *color,
                       void *config) {
-  Artist *artist = cm_malloc(sizeof(Artist), RC_ECHO(Artist));
+  Artist *CM_MALLOC(artist,sizeof(Artist));
   *artist = (Artist){
       .artist_type = artist_type,
       .gdata = gdata,

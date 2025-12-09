@@ -10,6 +10,7 @@
 #include "cust_malloc.h"
 
 #define LOG_IMPLEMENTATION
+#define LOG_DEBUG RAYCANDLE_DEBUG
 #include "log.h"
 
 

@@ -159,7 +159,7 @@ static void axes_draw_ylabels(Axes *axes) {
 #undef BUF_LEN
 
 void create_axes(Figure *figure, char *labels) {
-  figure->axes = cm_malloc(sizeof(Axes) * figure->axes_len, RC_ECHO(axes));
+  CM_MALLOC(figure->axes,sizeof(Axes) * figure->axes_len);
   for (size_t i = 0; i < figure->axes_len; ++i) {
     figure->axes[i] = (Axes){
         .xdata_buffer = NULL,

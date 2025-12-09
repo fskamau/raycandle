@@ -13,12 +13,12 @@ ReadySignal *ready_signal_create(void) {
   CM_MALLOC(ReadySignal * signal, sizeof(ReadySignal));
   signal->ready = 0;
   if (pthread_mutex_init(&signal->lock, NULL) != 0) {
-    cm_free_ptrv(&signal);
+    CM_FREE(signal);
     RS_ERROR("cannot init mutex\n");
   }
   if (pthread_cond_init(&signal->cond, NULL) != 0) {
     pthread_mutex_destroy(&signal->lock);
-    cm_free_ptrv(signal);
+    CM_FREE(signal);
     RS_ERROR("cannot init cond\n");
   }
   return signal;
@@ -44,5 +44,5 @@ void ready_signal_destroy(ReadySignal *signal) {
     return;
   pthread_mutex_destroy(&signal->lock);
   pthread_cond_destroy(&signal->cond);
-  cm_free_ptrv(&signal);
+  CM_FREE(signal);
 }

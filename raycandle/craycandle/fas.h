@@ -5,9 +5,9 @@
  * rows are separated by any amount of spaces
  * Max number of axes is FAS_MAX_AXES
  */
-
+#include <stddef.h>
 typedef struct {
-  unsigned int len, rows, cols, *skel;
+  size_t len, rows, cols, *skel;
   char *labels;
 } Fas; // figure axes skeleton
 

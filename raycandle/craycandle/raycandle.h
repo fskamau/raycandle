@@ -5,7 +5,7 @@ matplotlib
 
 #ifndef __RAYCANDLE__
 #define __RAYCANDLE__
-#define RAYCANDLE_DEBUG 0
+#define RAYCANDLE_DEBUG 1
 
 #include <stddef.h>
 #include <stdint.h>
@@ -29,11 +29,9 @@ typedef struct {
 typedef char *CFFI_Str;
 
 typedef enum {
-  SCREEN_DIMENSION_STATE_DEFAULT =
-      'd', // only exists before InitWindow is called
+  SCREEN_DIMENSION_STATE_DEFAULT ='d', // only exists before InitWindow is called
   SCREEN_DIMENSION_STATE_CHANGED = 'c', // when you resize the window
-  SCREEN_DIMENSION_STATE_UNCHANGED =
-      'u', // if previous window dimension has not changed
+  SCREEN_DIMENSION_STATE_UNCHANGED ='u', // if previous window dimension has not changed
 } ScreenDimensionState;
 
 typedef enum {

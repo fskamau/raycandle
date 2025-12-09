@@ -60,7 +60,7 @@ void string_clear(Str str);
                    (msg) ? msg : "");                                          \
   } while (0)
 
-#define STRING_ALLOC(name, size) name = cm_malloc((size), #name)
+#define STRING_ALLOC(name, size) CM_MALLOC(name ,(size))
 #define STRING_GET_START(string_ptr)                                           \
   (((char *)(string_ptr)) + (sizeof(_String)))
 #define STRING_GET_CURRENT(string_ptr)                                         \
@@ -202,7 +202,7 @@ void string_destroy(Str str) {
   string->capacity = 0;
   if (string->stack)
     return;
-  cm_free_ptrv(&string);
+  CM_FREE(string);
 }
 
 unsigned int string_len(Str str) {
