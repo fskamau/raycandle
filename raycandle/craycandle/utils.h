@@ -1,50 +1,54 @@
-#include "raycandle.h"
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "cust_malloc.h"
-#include <math.h>
+#include "raycandle.h"
 
-#define RC_DATA_IN_LIMIT(data, limit) (((limit).limit_min <= ((data))) && (data) <= ((limit).limit_max))
-
-double RC_PIXEL_X_2_DATA(int pixel,Axes* axes);
-#define RC_PIXEL_Y_2_DATA(pixel, axes) (((((axes)->height - ((pixel) - (axes)->startY)) /(double) (axes)->height) * (axes)->ylocator.limit.diff) + (axes)->ylocator.limit.limit_min)
-#define  RC_DATA_X_2_PIXEL please use GetMousePosition()
-#define RC_DATA_Y_2_PIXEL(data, axes) (((((axes)->ylocator.limit.limit_max - (data)) / (axes)->ylocator.limit.diff) * (axes)->height) + (axes)->startY)
-#define RC_COLOR1_EQUALS_COLOR2(color1, color2) ((color1).r == (color2).r && (color1).g == (color2).g && (color1).b == (color2).b && (color1).a == (color2).a)
+#include "log.h"
 
 
 
-long int maxl(long int a,long int b);
-long int minl(long int a,long int b);
+#define RC_DATA_IN_LIMIT(data, limit)                                          \
+  (((limit).limit_min <= ((data))) && (data) <= ((limit).limit_max))
+
+double RC_PIXEL_X_2_DATA(int pixel, Axes *axes);
+#define RC_PIXEL_Y_2_DATA(pixel, axes)                                         \
+  (((((axes)->height - ((pixel) - (axes)->startY)) / (double)(axes)->height) * \
+    (axes)->ylocator.limit.diff) +                                             \
+   (axes)->ylocator.limit.limit_min)
+#define RC_DATA_X_2_PIXEL please use GetMousePosition()
+#define RC_DATA_Y_2_PIXEL(data, axes)                                          \
+  (((((axes)->ylocator.limit.limit_max - (data)) /                             \
+     (axes)->ylocator.limit.diff) *                                            \
+    (axes)->height) +                                                          \
+   (axes)->startY)
+#define RC_COLOR1_EQUALS_COLOR2(color1, color2)                                \
+  ((color1).r == (color2).r && (color1).g == (color2).g &&                     \
+   (color1).b == (color2).b && (color1).a == (color2).a)
+
+long int maxl(long int a, long int b);
+long int minl(long int a, long int b);
 
 #define RC_ECHO(__any) #__any
-#define FIGURE_FONT(__pfigure)  (*(Font*)(__pfigure)->font)
-
+#define FIGURE_FONT(__pfigure) ((__pfigure)->font)
 
 #if RAYCANDLE_DEBUG
 #include <assert.h>
-#define RC_ASSERT(cond,...) assert(cond)
-#else 
-#define RC_ASSERT(cond,...) do {if(!(cond)){RC_ERROR("condition '" #cond"' failed ;" __VA_ARGS__);}}while(0)
+#define RC_ASSERT(cond, ...) assert(cond)
+#else
+#define RC_ASSERT(cond, ...)                                                   \
+  do {                                                                         \
+    if (!(cond)) {                                                             \
+      RC_ERROR("condition '" #cond "' failed ;" __VA_ARGS__);                  \
+    }                                                                          \
+  } while (0)
 #endif
 
 
-typedef enum {
-  LOG_LEVEL_INFO = 0,
-  LOG_LEVEL_WARN = 1,
-  LOG_LEVEL_ERROR = 2,
-} Log_Level;
-void set_log_level(Log_Level Log_Level);
 
-#define RC_INFO(error_format, ...) RC_write_std(LOG_LEVEL_INFO, __FILE__,__LINE__,__func__, error_format,##__VA_ARGS__)
-#define RC_WARN(error_format, ...) RC_write_std(LOG_LEVEL_WARN, __FILE__,__LINE__,__func__, error_format,##__VA_ARGS__)
-#define RC_ERROR(error_format, ...)RC_write_std(LOG_LEVEL_ERROR, __FILE__,__LINE__,__func__, error_format,##__VA_ARGS__)
-
-#define RAYCANDLE_MAX_ERROR_STR 1024
-#define RC_EXIT RC_ERROR("JUST EXITED HERE\n");
-void RC_write_std(Log_Level log_level,const char file[],int line,const char func[],const char* error_format,...);
-
-
+#define RC_INFO(format, ...)  log_info(format,##__VA_ARGS__)
+#define RC_WARN(format, ...) log_warn(format,##__VA_ARGS__)
+#define RC_ERROR(format, ...) log_error(format,##__VA_ARGS__)
 
 static const Color tableau_colors[10] = {
     {31, 119, 191, 255},  // Blue
@@ -66,38 +70,11 @@ typedef enum {
 } Rc_Alignment;
 
 
-Color FadeToBlack(Color c, float amount) ;
+float align_text(Font font, const char *text, int width, int font_size,int spacing,Rc_Alignment alignment); // returns startx for the text
 
-float align_text(Font font, const char *text, int width, int font_size, int spacing,Rc_Alignment alignment); // returns startx for the text
+Color FadeToBlack(Color c, float amount);
 
 Color axes_get_next_tableau_t10_color(Axes *axes);
-
-/*
-if need be to add more logic since show(figure) will block, these 3 functions may be used:
-InitWindow();
-while (!WindowShouldClose()){
-
-}
-CloseWindow();
-
-translates to :
-
-  raylib_init(figure);// calls InitWindow()
-  while(!WindowShouldClose()){
-    ClearBackground(WHITE);
-    raylib_init_loop();//set up controls and ajust figure size
-    BeginDrawing();
-    //any more logic here
-  update_figure(figure); // will draw artists
-  EndDrawing();
-  }
-  CloseWindow();
-
-*/
-void raylib_init(Figure *figure);   // init window
-void raylib_init_loop();// routines for raylib  in each loop
-bool update_figure(Figure *figure); // main update
-
 
 /*some figure defaults*/
 #undef CUSM_PREFIX
