@@ -5,8 +5,6 @@
 #include <stdio.h>
 #include <string.h>
 
-/* #define CM_IMPLEMENTATION */
-/* #define CM_SILENT 1 */
 #include "cust_malloc.h"
 
 #define FAS_ERROR(format, ...)                                          \

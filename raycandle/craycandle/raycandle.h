@@ -5,7 +5,7 @@ matplotlib
 
 #ifndef __RAYCANDLE__
 #define __RAYCANDLE__
-#define RAYCANDLE_DEBUG 1
+#define RAYCANDLE_DEBUG 0
 
 #include <stddef.h>
 #include <stdint.h>
