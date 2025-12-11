@@ -1,5 +1,4 @@
 export PKG_CONFIG_PATH=../../raylib/lib/pkgconfig
-export PKG_CONFIG_PATH=$(HOME)/opt/lib/raylib/lib/pkgconfig
 
 CFLAGS=-Wextra -Wall -O3 -fPIC  -std=c99 $(shell pkg-config --cflags raylib)
 LDFLAGS=$(shell pkg-config --libs raylib)
