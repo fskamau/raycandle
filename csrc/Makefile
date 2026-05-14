@@ -2,7 +2,7 @@ CC=gcc
 CFLAGS=-Wextra -Wall -O3 -fPIC  -std=c99 $(shell pkg-config --cflags raylib)
 LDFLAGS=$(shell pkg-config --libs raylib)
 TARGET_FOLDER=./build
-SOURCES=figure.c
+SOURCES=utils.c str.c figure.c 
 OBJECTS=$(patsubst %.c,$(TARGET_FOLDER)/%.o, $(SOURCES))
 
 all: raycandle.so raycandle_for_cffi.h clean mv

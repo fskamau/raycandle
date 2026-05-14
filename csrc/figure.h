@@ -4,6 +4,7 @@
 typedef struct {
   char* window_title;
   Arena* arena;
+  float spacing;
 }Figure;
 
 #define MAX_WINDOW_TITLE 256 // max window title char

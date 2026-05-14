@@ -20,7 +20,7 @@ void   arena_print(Arena *arena);
 
 #ifdef ARENA_IMPLEMENTATION
 
-#define ARENA_ALIGNMENT 8
+#define ARENA_ALIGNMENT (sizeof(void*))
 #define ARENA_ERROR(fmt, ...)do {\
         fprintf(stderr, "[ARENA]: " fmt "\n", ##__VA_ARGS__); \
         exit(1); \
