@@ -86,7 +86,7 @@ char* str_create(char* external_buf, size_t buf_size) {
 
 char* str_create_with_arena(Arena* arena, size_t buf_size)
 {
-  return str_create(arena_alloc(arena,STR_HEADER_SIZE+buf_size+1),buf_size+STR_HEADER_SIZE+1);
+  return str_create(arena_alloc_or_die(arena,STR_HEADER_SIZE+buf_size+1),buf_size+STR_HEADER_SIZE+1);
  }
 
 
