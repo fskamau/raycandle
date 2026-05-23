@@ -2,31 +2,40 @@
 #include <string.h>
 #include "utils.h"
 #include "math.h"
+#include <string.h>
 
-#define RECT_PRINT(r) printf("(Rect){% 6.1f % 6.1f % 6.1f % 6.1f }\n",(r).x,(r).y,(r).w,(r).h)
+#define RECT_PRINT(r) printf("(Rect){% 6.2f % 6.2f % 6.2f % 6.2f }\n",(r).x,(r).y,(r).w,(r).h)
 
 typedef Rect* RectRatios;
 
+struct NData {
+  Arena* arena;
+  Rect** nodes;  
+  size_t count;
+};
+  
 NC *nc_create(size_t bytes)
 {
   Arena* arena=arena_create(bytes);
-  NC *nc = arena_alloc_or_die(arena, sizeof(NC));    
-  nc->root = arena_alloc_or_die(arena, sizeof(Node));
+  NC *nc = arena_alloc(arena, sizeof(NC));    
+  nc->root = arena_alloc(arena, sizeof(Node));
   memset(nc->root, 0, sizeof(Node));
   nc->root->area=(Rect){0.f,0.f,1.f,1.f};
-  nc->arena = arena;
+  nc->data=arena_alloc(arena,sizeof(*nc->data));
+  memset(nc->data,0,sizeof(*nc->data));
+  nc->data->arena=arena;
   return nc;
 }
 
 
-Node *nc_divide(NC *nc, Node *parent, size_t* ratios, size_t count, bool vertical)
+void nc_divide(NC *nc, Node *parent, size_t* ratios, size_t count, bool vertical)
 {
   ASSERT(nc&&parent);
-  ASSERTM(!nc->nodes, "node already compiled");
+  ASSERTM(!nc->data->nodes, "node already compiled");
   ASSERT(count>1);
   ASSERTM(parent->count==0,"node already divided\n");
   parent->count=count;
-  parent->nodes=arena_alloc_or_die(nc->arena, sizeof(Node) * count);
+  parent->nodes=arena_alloc(nc->data->arena, sizeof(Node) * count);
   memset(parent->nodes,0,sizeof(Node) * count);
   float total_count=0;
   float cum=0.f;
@@ -35,7 +44,7 @@ Node *nc_divide(NC *nc, Node *parent, size_t* ratios, size_t count, bool vertica
   if(ratios)for(size_t i=0; i<count; ++i){
       ASSERT(ratios[i]>0);
       total_count+=ratios[i];
-    }
+    }else
   for(size_t i=0; i<count; ++i){
     float r=ratios?(ratios[i]/total_count):divr;
     Rect* area=&parent->nodes[i].area;
@@ -50,21 +59,21 @@ Node *nc_divide(NC *nc, Node *parent, size_t* ratios, size_t count, bool vertica
       area->h=p_area.h*r;
       cum+=area->h;
     }
-  }  
-  return parent->nodes;
+  }
 }
 
 void nc_grid(NC* nc, Node *node, size_t rows, size_t cols)
 {
   ASSERT(nc&&node);
   ASSERT(rows>0&&cols>0);
-  ASSERTM(!(rows==1&&cols==1), "cannot grid 1row x 1cols\n");
-  Node* nodes=(Node[]){*node};
-  if(rows>1)
-    nodes=nc_divide(nc,node, NULL, rows , false);
+  ASSERTM(!(rows==1&&cols==1), "already a 1row x 1col\n");
+  if(rows>1){
+    nc_divide(nc,node, NULL, rows , false);
+    node=node->nodes;
+  }
   if(cols>1)
     for(size_t i=0; i<rows;++i)
-      nc_divide(nc,&nodes[i], NULL, cols , true);
+      nc_divide(nc,node+i, NULL, cols , true); //if node has no nodes then its ok to node+0 since if !node->nodes then rows=1~0
 }
 
 
@@ -88,7 +97,7 @@ static size_t nc_count(NC* nc)
 static void nc_set_nodes(NC*nc, Node* node, size_t *count)
 {
   if(node->count==0){
-    nc->nodes[*count]=&node->area;
+    nc->data->nodes[*count]=&node->area;
     (*count)++;
     return;
   }
@@ -106,27 +115,28 @@ static int qsort_compare_nodes(const void* a, const void* b){
     return 0;
 }
 
-void nc_compile(NC *nc)
+size_t nc_compile(NC *nc)
 {
   ASSERT(nc);
-  ASSERTM(!nc->nodes,"already compiled\n");
+  ASSERTM(!nc->data->nodes,"already compiled\n");
   size_t count=nc_count(nc);
-  Rect** nodes=arena_alloc_or_die(nc->arena, sizeof(*nc->nodes)*count);  
-  nc->nodes=nodes;
-  nc->count=count;
+  Rect** nodes=arena_alloc(nc->data->arena, sizeof(*nc->data->nodes)*count);  
+  nc->data->nodes=nodes;
+  nc->data->count=count;
   count=0;
   nc_set_nodes(nc, nc->root, &count);
-  qsort(nc->nodes, nc->count, sizeof(*nc->nodes),qsort_compare_nodes);
+  qsort(nc->data->nodes, nc->data->count, sizeof(*nc->data->nodes),qsort_compare_nodes);
+  return nc->data->count;
 }
 
 
 void nc_set_area(NC* nc, Rect* dest, Rect area, float spacing)
 {
     ASSERT(nc && dest);
-    ASSERTM(nc->nodes, "call nc_compile first");
+    ASSERTM(nc->data->nodes, "call nc_compile first");
     const int pad = (int)roundf(spacing);
-    for (size_t i = 0; i < nc->count; ++i) {
-        Rect* na = nc->nodes[i];
+    for (size_t i = 0; i < nc->data->count; ++i) {
+        Rect* na = nc->data->nodes[i];
         float fx0 = area.x + na->x * area.w;
         float fy0 = area.y + na->y * area.h;
         float fx1 = area.x + (na->x + na->w) * area.w;

@@ -6,30 +6,27 @@
 #include <stdlib.h>
 #include <stdint.h>
 
-typedef struct {
+typedef struct Arena Arena;
+ struct Arena{
   size_t cap;
   size_t offset;
   char *buffer;
-} Arena;
+} ;
 
 Arena *arena_create(size_t bytes);
 void  *arena_alloc(Arena *arena, size_t bytes);
-void  *arena_alloc_or_die(Arena *arena, size_t bytes);
 void   arena_free(Arena *arena);
 void   arena_print(Arena *arena);
 
 #ifdef ARENA_IMPLEMENTATION
-
 #define ARENA_ALIGNMENT (sizeof(void*))
 
-#define ARENA_ERROR(fmt, ...) do {                                      \
-    fprintf(stderr,"%s:%d: Error " fmt ,__FILE__, __LINE__, ##__VA_ARGS__); \
-    exit(1);                                                            \
-  } while(0)
-
+#define ARENA_ERROR(fmt, ...) do{                                       \
+    fprintf(stderr,"%s:%d: [ARENA ERROR] " fmt ,__FILE__, __LINE__, ##__VA_ARGS__); \
+    exit(1);}while (0)                                           
 
 Arena *arena_create(size_t bytes) {
-  if (bytes == 0) ARENA_ERROR("Cannot create arena with 0 bytes.");
+  if (bytes == 0) ARENA_ERROR("Cannot create arena with 0 bytes.\n");
   Arena *arena = (Arena *)malloc(sizeof(Arena) + bytes);
   if (arena == NULL) return NULL;
   arena->cap = bytes;
@@ -39,36 +36,35 @@ Arena *arena_create(size_t bytes) {
 }
 
 void *arena_alloc(Arena *arena, size_t bytes) {
+  if(!arena)ARENA_ERROR("null argument\n");
   if (bytes == 0) {
-    ARENA_ERROR("arena_alloc: Requested 0 bytes.");
+    ARENA_ERROR("arena_alloc: Requested 0 bytes.\n");
   }
   uintptr_t current_ptr = (uintptr_t)arena->buffer + arena->offset;
   uintptr_t aligned_ptr = (current_ptr + ARENA_ALIGNMENT - 1) & ~(ARENA_ALIGNMENT - 1);
   size_t aligned_offset = aligned_ptr - (uintptr_t)arena->buffer;
-  if (aligned_offset + bytes > arena->cap) {
-    return NULL;
-  }
-  void *ptr = &arena->buffer[aligned_offset];
+  if (aligned_offset>arena->cap || bytes > arena->cap||aligned_offset+bytes>arena->cap)goto arena_alloc_error;
+  void *ptr = arena->buffer+aligned_offset;
   arena->offset = aligned_offset + bytes;
+  if(!ptr)goto arena_alloc_error;
   return ptr;
-}
-
-void *arena_alloc_or_die(Arena *arena, size_t bytes) {
-  void *ptr = arena_alloc(arena, bytes);
-  if (ptr == NULL) {
-    ARENA_ERROR("arena_alloc_or_die: Out of memory (cap: %zu, requested: %zu)", arena->cap, bytes);
+ arena_alloc_error:{
+    size_t rem=arena->cap-aligned_offset;
+    ARENA_ERROR("arena_alloc: Out of memory: needs %zu more; (req %zu cap (%zubytes ~= %.4fMb) free %zu)\n",bytes-rem,bytes,arena->cap,(double)arena->cap/(1024*1024*1024), rem);
   }
-  return ptr;
 }
 
 void arena_free(Arena *arena) {
+  if(!arena)ARENA_ERROR("null argument\n");
   free(arena);
 }
 
 void arena_print(Arena *arena) {
+  if(!arena)ARENA_ERROR("null argument\n");
   double percent = ((double)arena->offset / (double)arena->cap) * 100.0;
-  printf("Arena(cap=%zu, free=%zu, %%free=%.2f%%)\n", 
-         arena->cap, 
+  printf("Arena(cap=%zu, used=%zu free=%zu, %%free=%.2f%%)\n", 
+         arena->cap,
+         arena->offset,
          arena->cap - arena->offset, 
          100.0 - percent);
 }

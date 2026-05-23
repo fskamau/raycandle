@@ -10,7 +10,14 @@
 
 
 
-#define ASSERT(cond) if(!(cond)) ray_error("cond ("#cond ") failed\n")
+#define ASSERT(cond) if(!(cond)) ray_error("(assert) "#cond " failed\n")
 #define ASSERTM(cond, fmt, ...) if(!(cond)) ray_error(fmt, ##__VA_ARGS__);
+
+#define MIN(a,b) (a)<(b)?(a):(b)
+#define MAX(a,b) (a)>(b)?(a):(b)
+
+#define LIMIT_PRINT(l) printf("Limit(min=%f, max:%f)\n",(l).min, (l).max)
+
+
 
 #endif //_RAYCANDLE_UTILS_

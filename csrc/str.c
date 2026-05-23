@@ -84,9 +84,42 @@ char* str_create(char* external_buf, size_t buf_size) {
     return data;
 }
 
+static char* str_createv(const char* fmt, va_list args)
+{
+    if (!fmt) {
+        return str_create(NULL, 0);
+    }
+    va_list args_copy;
+    va_copy(args_copy, args);
+    int needed = vsnprintf(NULL, 0, fmt, args_copy);
+    va_end(args_copy);
+    if (needed < 0) {
+        STR_FAIL_MSG("str_createv: encoding error during size check");
+    }
+    size_t length = (size_t)needed;
+    char* s = str_create(NULL, length);
+    StrHeader* hdr = str_get_hdr(s);
+    size_t available = hdr->capacity;
+    int written = vsnprintf(s, available + 1, fmt, args);
+    if (written < 0 || (size_t)written > available) 
+        STR_FAIL_MSG("str_createv: format write failed unexpectedly");
+    hdr->len = (size_t)written;
+    return s;
+}
+
+
+char* str_createf(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    char* s = str_createv(fmt, args);
+    va_end(args);
+    return s;
+}
+
+
 char* str_create_with_arena(Arena* arena, size_t buf_size)
 {
-  return str_create(arena_alloc_or_die(arena,STR_HEADER_SIZE+buf_size+1),buf_size+STR_HEADER_SIZE+1);
+  return str_create(arena_alloc(arena,STR_HEADER_SIZE+buf_size+1),buf_size+STR_HEADER_SIZE+1);
  }
 
 

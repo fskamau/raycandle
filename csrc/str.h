@@ -4,7 +4,9 @@
 #include <stddef.h>
 #include <stdarg.h>
 #include "arena.h"
+
 char* str_create(char* external_buf, size_t buf_size);
+char* str_createf(const char* fmt, ...);
 char* str_create_with_arena(Arena* arena, size_t buf_size);
 void  str_free(char* s);
 void  str_clear(char* s);

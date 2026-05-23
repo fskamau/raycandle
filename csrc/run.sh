@@ -2,8 +2,11 @@
 set -xe
 export PKG_CONFIG_PATH=/home/ve/opt/lib/raylib/lib/pkgconfig
 
+
 make
 
+
+[ ! -e "build/libraycandle.so" ] && ln -s --relative "build/libraycandle.so.1" "build/libraycandle.so"
 RAYCANDLE_LIB="./build"
 
 if [ "$#" -lt 1 ]; then

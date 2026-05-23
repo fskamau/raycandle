@@ -2,68 +2,79 @@
 #include "raylib.h"
 #include "figure.h"
 #include "node.h"
-/* (Rect){   0.0    0.0  181.8  600.0 } */
-/* (Rect){ 181.8    0.0   72.7  600.0 } */
-/* (Rect){ 254.5    0.0  109.1  600.0 } */
-/* (Rect){ 363.6    0.0  181.8  600.0 } */
-/* (Rect){ 763.6    0.0  181.8  600.0 } */
-/* (Rect){ 727.3    0.0   72.7  600.0 } */
-/* (Rect){   0.0    0.0  181.8  600.0 } */
-#define RECT_PRINT(r) printf("(Rect){% 6.1f % 6.1f % 6.1f % 6.1f }\n",(r).x,(r).y,(r).w,(r).h)
-#define UNWRAP_RECT(r) (r).x, (r).y, (r).w, (r).h
+#include "raycandle.h"
+#include "artist.h"
 
-void node_draw(Rect* areas, size_t count){
-  for(size_t i=0;i<count;++i){
-    DrawRectangle(UNWRAP_RECT(areas[i]),RED);
-    char buffer_[128]={0};
-    char *buffer=str_create(buffer_,sizeof(buffer_)/sizeof(buffer_[0]));
-    str_append(buffer,"%zu [%.2f %.2f %.2f %.2f ]",i,UNWRAP_RECT(areas[i]));
-    DrawText(buffer,areas[i].x+10,areas[i].y+20,10,YELLOW);
-    str_clear(buffer);    
-  }
-  
-}
-int main(){
 
-  Arena *arena=arena_create(1024);
-  NC* nc=nc_create(1024*1024);
-    Node *x=nc_divide(nc,nc->root,(size_t[]){5,2,3,10,2},5,1);
-    for(size_t i=0;i<5;++i) nc_divide(nc,&x[i],(size_t[]){5,2,3,10,2},5,0);
-/*     nc_divide(nc,&x[3],(size_t[]){2,2,5,3,4},5,1); */
-/*     x=nc_divide(nc,x,(size_t[]){2,2},2,0); */
+#define LEN (size_t)5
 
-/*     x=nc_divide(nc,&x[0],NULL,20,1); */
-/*     x=nc_divide(nc,&x[1],(size_t[]){3,2},2,1); */
+double* random_floats(double min, double max, size_t len, void* arena, double smoothness) {
+    size_t bytes = len * sizeof(double);
+    double* data = (double*)arena_alloc(arena, bytes);
+    if (!data) return NULL;
 
-/*   nc_grid(nc, nc->root, 4,5); */
-  nc_compile(nc);
-  Rect* dest=arena_alloc(arena,sizeof(*dest)*nc->count);
+    double range = max - min;
     
-/*   return 0; */
+    // 1. Start at a random point in the range
+    data[0] = min + ((double)rand() / (double)RAND_MAX) * range;
 
-  const int screenWidth = 800;
-  const int screenHeight = 600;
-  SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-  SetConfigFlags(FLAG_MSAA_4X_HINT);
-  SetTraceLogLevel(LOG_ERROR);
-  InitWindow(screenWidth, screenHeight, "RayCandle - Grid Layout");
-  SetTargetFPS(60);
-  while (!WindowShouldClose()) {
-    // Update: Recalculate areas if window resized (optional)
-    Rect screen = { 0, 0, (float)GetScreenWidth(), (float)GetScreenHeight() };
-    nc_set_area(nc, dest, screen, 10.f);
+    // 2. Generate subsequent points based on the previous point
+    for (size_t i = 1; i < len; i++) {
+        // 'smoothness' determines how much the value can change (0.0 to 1.0)
+        double jitter = ((double)rand() / (double)RAND_MAX * 2.0 - 1.0) * range * smoothness;
+        data[i] = data[i - 1] + jitter;
 
-    SetExitKey(KEY_Q);
-    BeginDrawing();
-    ClearBackground(RAYWHITE);
-            
-    // Draw the nodes
-    node_draw(dest,nc->count);
-    DrawFPS(10, 10);
-    EndDrawing();
-  }
+        // 3. Keep the values within the requested min/max bounds
+        if (data[i] > max) data[i] = max;
+        if (data[i] < min) data[i] = min;
+    }
+    
+    return data;
+}
 
-  CloseWindow();
-  return 0;  
+ 
+int main(){
+  Arena *arena=arena_create(1024*1024*1024);
+  NC* nc=nc_create(1024*1024*1024);
+  nc_grid(nc,nc->root,2,2);
+  Figure* figure=figure_createn(nc);
+  figure_set_view_data(figure,LEN,0,(double[]){1,2,0,-1,4,5});
+  Theme theme=figure->theme;
+  theme.font_path= "/home/ve/Downloads/home/raycandle1/.raycandle/raycandle/fonts/iosevka-regular.ttf";
+  figure_set_theme(figure, theme);
+
+  LineData ldata=(LineData){.is_relative=0,
+                  .is_splined=1,
+                  .data=(double []){30,10,0.0,-30.9,-20,-23,20,400,33}};
+  
+  artist_create(figure->axes,ARTIST_TYPE_LINE,1.0,NULL,&ldata);
+
+  ldata=(LineData){.is_relative=0,
+                  .is_splined=1,
+                  .data=(double []){0,1,0.0,-0.9,30,-23,20,400,33}};
+  
+  artist_create(figure->axes,ARTIST_TYPE_LINE,1.0,NULL,&ldata);
+
+  ldata=(LineData){.is_relative=1,
+                  .is_splined=0,
+                  .data=(double []){0,1,0.5,0.5}};
+  
+  artist_create(figure->axes,ARTIST_TYPE_LINE,2.0,&BLACK,&ldata);
+
+  
+  ldata=(LineData){.is_relative=0,
+                  .is_splined=false,
+                  .data=(double []){2,0.3,0.5,0.0,30,20,400,33}};
+  
+  artist_create(figure->axes,ARTIST_TYPE_LINE,1.0,NULL,&ldata);
+
+  double* data=random_floats(1.02,3.9,LEN*4,arena,3);
+  artist_create(figure->axes,ARTIST_TYPE_CANDLE,1.0,NULL,data);
+
+  
+    /* artist_create(figure->axes,ARTIST_TYPE_LINE,1.0,&RED,data); */
+    /*   artist_create(figure->axes,ARTIST_TYPE_LINE,1.0,&RED,data); */
+  figure_show(figure,NULL,720,1960,23);
+ 
   return 0;
 }
