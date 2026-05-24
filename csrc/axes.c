@@ -9,16 +9,16 @@
 
 
 void axes_draw(Axes* axes){
-  /* NODE_RECT_PRINT(*axes->area); */
   Rect area=*axes->area;
   DrawRectangleLines(NODE_RECT_UNWRAP(area),axes->fig->theme.fg);
   Artist* artist=axes->artist;
+  if(!artist)return;
   if(axes->fig->force_update)
     {
       Limit lim=(Limit){NAN,NAN};
       Vd vd=axes->fig->fc->vd;
       ASSERT(vd.vlen!=0);
-      axes->w=area.w/(vd.vlen-1);
+      axes->w=area.w/(vd.vlen);      
       while(artist&&artist->is_limitable){
         Limit tlim=artist->avt->get_limit(artist,axes);
         if (!isnan(tlim.min)) {
@@ -44,5 +44,6 @@ void axes_draw(Axes* axes){
   while(artist){
     artist->avt->draw(artist,axes,area);
     artist=artist->next;
-  } 
+    
+  }
 }

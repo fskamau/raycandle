@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-Wextra -Wall -O3 -fPIC  -std=c99 -ggdb $(shell pkg-config --cflags raylib)
+CFLAGS=-Wextra -Wall -O0 -fPIC  -std=c99 -ggdb $(shell pkg-config --cflags raylib)
 LDFLAGS=$(shell pkg-config --libs raylib)
 TARGET_FOLDER=./build
 SOURCES=utils.c str.c figure.c  node.c axes.c ready_signal.c artist.c

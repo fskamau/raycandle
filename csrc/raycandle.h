@@ -55,7 +55,6 @@ typedef struct {
   double* data;
 }LineData;
 
-
 struct Artist{
   ArtistType atype;
   void *data;
@@ -88,7 +87,6 @@ struct Theme{
   size_t font_size;
   size_t font_spacing;
   float spacing;
-  bool show_title;
   char* font_path;
 }; //visible config for the figure
 
@@ -107,7 +105,7 @@ struct Figure {
 };
 
 void figure_set_theme(Figure* figure, Theme theme);
-void figure_set_view_data(Figure* figure, size_t len, char *xformat, double *xdata); //set view data. len is required.
+void figure_set_view_data(Figure* figure, size_t len, char *xformat, double *xdata); //set view data
 
 double scale_to_limitf(double val, Limit src, Limit dest);
 void scale_to_limit(const double *data, double *dest, size_t count, Limit srcl, Limit destl);

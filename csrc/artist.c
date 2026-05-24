@@ -63,7 +63,7 @@ Artist* artist_create(Axes *axes, ArtistType atype, float thick,Color* colors, v
 
 static void  artist_line_init(Artist* artist, Axes* axes)
 {
-  ASSERT(artist->data);  
+  ASSERT(artist->data);
   LineData *ldata=artist->data;
   size_t len=axes->fig->fc->vd.len;
   Arena* arena=axes->fig->arena;
@@ -77,7 +77,7 @@ static void  artist_line_init(Artist* artist, Axes* axes)
   pdata->data=arena_alloc(arena,tocp);
   memcpy(pdata->data,ldata->data,tocp);
   Color* colors=arena_alloc(arena,sizeof(Color));
-  if(artist->colors)*colors=*artist->colors;  
+  if(artist->colors)*colors=*artist->colors;
   else *colors=axes_get_next_tableau_t10_color(axes);
   artist->colors=colors;
   artist->data=pdata;
@@ -99,7 +99,7 @@ static void  artist_candle_init(Artist* artist, Axes* axes)
     colors[1]=axes_get_next_tableau_t10_color(axes);
   }
   artist->colors=colors;
-  artist->data=cd;  
+  artist->data=cd;
 }
 
 
@@ -124,13 +124,12 @@ static Limit artist_line_get_limit(Artist* artist, Axes* axes)
 static Limit artist_candle_get_limit(Artist* artist, Axes* axes){
   Vd vd=axes->fig->fc->vd;
   size_t len=axes->fig->fc->vd.len;
-  double *data=artist->data;  
-  Limit l1=get_lim(data+(len*1)+vd.start,vd.stop-vd.start);//o,[h],l,c
-  Limit l2=get_lim(data+(len*2)+vd.start,len);//o,h,[l],c
+  double *data=artist->data;
+  Limit l1=get_lim(data+(len*1)+vd.start,vd.vlen);//o,[h],l,c
+  Limit l2=get_lim(data+(len*2)+vd.start,vd.vlen);//o,h,[l],c
   double array_lim[4]={l1.min,l1.max,l2.min,l2.max};
   Limit lim=get_lim(array_lim,4);
-  LIMIT_PRINT(lim);
-  return lim;  
+  return lim;
 }
 
 
@@ -138,13 +137,15 @@ static Limit artist_candle_get_limit(Artist* artist, Axes* axes){
 static void  artist_line_draw(Artist* artist, Axes* axes, Rect area)
 {
   Vd vd=axes->fig->fc->vd;
-  LineData *ldata=artist->data; 
+  LineData *ldata=artist->data;
   double *data=ldata->data;
+  float xmiddle=0.5*axes->w;
   Limit destl=(Limit){.max=area.y,.min=area.h+area.y};
+  size_t rc=1;
   if(ldata->is_splined){
-    for(size_t i=vd.start;i<vd.stop;++i){
-      DrawLineEx((Vector2){axes->w*(i-1)+area.x,scale_to_limitf(data[i-1],axes->lim,destl)},
-                 (Vector2){axes->w*i+area.x,scale_to_limitf(data[i],axes->lim,destl)},artist->thick,*artist->colors);
+    for(size_t i=vd.start+1;i<vd.stop;++i,rc++){
+      DrawLineEx((Vector2){axes->w*(rc-1)+area.x+xmiddle,scale_to_limitf(data[i-1],axes->lim,destl)},
+                 (Vector2){axes->w*rc+area.x+xmiddle,scale_to_limitf(data[i],axes->lim,destl)},artist->thick,*artist->colors);
     }
   }else{
     double x[2]={0};
@@ -152,17 +153,33 @@ static void  artist_line_draw(Artist* artist, Axes* axes, Rect area)
     Limit ylim=(ldata->is_relative)?(Limit){0.f,1.f}:axes->lim;
     Limit xlim=(ldata->is_relative)?(Limit){0.f,1.f}:axes->fig->xlim;
     scale_to_limit(data,x, 2, xlim, (Limit){area.x,area.x+area.w});
-    /* LIMIT_PRINT(axes->fig->xlim); */
     scale_to_limit(data+2, y, 2, ylim, destl);
     DrawLineEx((Vector2){*x,*y},(Vector2){x[1],y[1]},artist->thick,*artist->colors);
   }
 }
-  
 
 static void  artist_candle_draw(Artist* artist, Axes* axes, Rect area)
 {
-  size_t len=axes->fig->fc->vd.len;
   Vd vd=axes->fig->fc->vd;
-  for(size_t i=vd.start;i<vd.stop;++i){
+  double *data=artist->data;
+  float w_use_ratio=0.7;
+  float w_use=w_use_ratio*axes->w;
+  float w_offset=(1.f-w_use_ratio)*0.5*axes->w;
+  size_t rc=0;
+  for(size_t i=vd.start;i<vd.stop;++i,++rc){
+    double cl[4]={
+      data[vd.len*0+i],
+      data[vd.len*1+i],
+      data[vd.len*2+i],
+      data[vd.len*3+i],
+    };
+    Limit limy=(Limit){.min=area.y+area.h,.max=area.y};
+    scale_to_limit(cl,cl,4,axes->lim,limy);
+    float sx=(axes->w*rc)+w_offset+area.x;
+    Color c=artist->colors[(cl[0]>cl[3])?0:1];    
+    DrawRectangleLines(sx,fmin(cl[0],cl[3]),w_use,fabs(cl[0]-cl[3]),c);
+    float xmiddle=sx+w_use*0.5;
+    DrawLine(xmiddle,cl[1],xmiddle,fmin(cl[0],cl[3]),c);
+    DrawLine(xmiddle,fmax(cl[0],cl[3]),xmiddle,cl[2],c);
   }
 }

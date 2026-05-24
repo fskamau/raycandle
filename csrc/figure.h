@@ -20,11 +20,21 @@ typedef struct Vd Vd; //view data
 struct Vd{
   size_t len;
   size_t start;
-  size_t stop;//exclusive
+  size_t stop; //exclusive
   size_t vlen;
   size_t ulen;
+  Vector2 velocity;
+  Axes* aum;
+  int wait_mouse_up;
+  float decay;
+  float xoffset;//offset x with some epsilon for smoothness
 };//view data
 
+
+typedef struct{
+  Rect area;
+  int is_visible;
+}Bar;
 
 struct Fconfig {
   NC *nc;
@@ -38,9 +48,12 @@ struct Fconfig {
   Vd vd;
   double* xdata;
   char* xformat;
+  Bar title_bar;
+  Bar mode_bar;
 };
 
 
+  
 Figure* figure_create(size_t rows, size_t cols);
 Figure *figure_createn(NC* nc); // manually set the nodes. it will call nc_compile(nc)
 void figure_set_title(Figure* figure, char *title);
