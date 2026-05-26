@@ -66,6 +66,11 @@ struct Artist{
   bool is_limitable;
 };
 
+typedef struct{
+  Rect area;
+  char *format;
+}Label;
+
 typedef struct Axes Axes;
 struct Axes{
   Rect* area;
@@ -79,6 +84,7 @@ struct Axes{
   Limit lim;
   Str title;
   uint8_t tableau_t10_index;
+  Label ylabel;
 };
 
 typedef struct Theme Theme;

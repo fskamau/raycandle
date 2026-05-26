@@ -12,13 +12,14 @@
 #define NODES_ARENA_SIZE 1024*1024*8
 #define DEFAULT_WINDOW_TITLE "rc"
 
-#define BG_DEFAULT GetColor(0x060511ff)
+#define BG_DEFAULT GetColor(0x161511ff)
 #define FG_DEFAULT GetColor(0x8b8ba7ff)
-#define VIEWPORT_INITIAL_LEN 100
+#define VIEWPORT_INITIAL_LEN 50
 
-#define DEFAULT_VELOCITY_DECAY 0.7
-#define MINIMUM_VELOCITY 0.02 //reset to zero if lower than this
-#define VELOCITY_SCALE 1.9
+#define DEFAULT_VELOCITY_DECAY 0.8f
+#define MINIMUM_VELOCITY 0.005f //reset to zero if lower than this to avoid flickering
+#define MAX_EMPTY_OFFSET 0.3f
+#define ZOOMX_SCALE 4.f
 
 #define THEME_DEFAULT (Theme){                  \
     .bg=BG_DEFAULT,                             \
@@ -27,6 +28,9 @@
       .font_spacing=1,                          \
       .spacing=2,                               \
       }
+
+
+#define AXES_YLABEL_MAX_LEN 128
 
 static void  figure_compile(Figure* figure);
 static void   figure_create_axes(Figure *figure);
@@ -37,7 +41,7 @@ static void figure_update_xlim(Figure* figure);
 static void insert_bar(bool top, Rect* src, Rect* dest, size_t height, float spacing);
 static void figure_mode_bar_draw(Figure *figure);
 static void figure_handle_inputs(Figure* figure);
-static Axes* get_axes_under_mouse(Figure* figure);
+
 
 static Figure* figure_create_()
 {
@@ -49,7 +53,8 @@ static Figure* figure_create_()
   memset(figure->fc,0, sizeof(Fconfig));
   figure->fc->mode_bar.is_visible=1;
   figure->fc->signal_initialized=ready_signal_create(arena);
-  figure->fc->vd.decay=DEFAULT_VELOCITY_DECAY;  
+  figure->fc->vd.decay=DEFAULT_VELOCITY_DECAY;
+  figure->fc->vd.max_offset=MAX_EMPTY_OFFSET;
   figure->arena=arena;
   return figure;
 }
@@ -63,7 +68,7 @@ Figure* figure_create(size_t rows, size_t cols)
     nc_grid(fc->nc, fc->nc->root, rows,cols);
   figure->fc->axes_count=nc_compile(fc->nc);
   figure_compile(figure); //nodes & axes
-  
+
   return figure;
 }
 
@@ -102,7 +107,7 @@ void raylib_init(Figure *figure,char *window_title,int width, int height, int fp
 }
 
 
-void raylib_init_loop()
+void raylib_init_loop(Figure* figure)
 {
   // keyboard
   //  F -> Maximize
@@ -115,24 +120,27 @@ void raylib_init_loop()
   }
   // Q -> exit
   SetExitKey(KEY_Q);
+  
+  if(IsWindowResized())figure->force_update=1;
+
 }
 
 void figure_update(Figure* figure){
   Fconfig *fc=figure->fc;
   NC* nc=figure->fc->nc;
-  float spacing=figure->theme.spacing;    
+  float spacing=figure->theme.spacing;
   Rect area=(Rect){0,0,GetScreenWidth(),GetScreenHeight()};
   if(fc->title_bar.is_visible)insert_bar(1, &area,&fc->mode_bar.area, figure->theme.font_size,figure->theme.spacing);
-  if(fc->mode_bar.is_visible)insert_bar(0, &area,&fc->mode_bar.area, figure->theme.font_size,figure->theme.spacing);     
+  if(fc->mode_bar.is_visible)insert_bar(0, &area,&fc->mode_bar.area, figure->theme.font_size,figure->theme.spacing);
   nc_set_area(nc,figure->fc->rects,area,spacing);
-  if(figure->force_update)figure_update_xlim(figure);    
+  figure_handle_inputs(figure);
+  if(figure->force_update)figure_update_xlim(figure);
   for(size_t i=0;i<fc->axes_count;++i){
+    if(figure->force_update)axes_update_limy(figure->axes+i);
     axes_draw(figure->axes+i);
   }
   figure_mode_bar_draw(figure);
-    figure_handle_inputs(figure);   
-
-  /* figure->force_update=false;     */
+  figure->force_update=false;
 }
 
 
@@ -141,12 +149,13 @@ void figure_show(Figure* figure, char* window_title, int width, int height, int 
   Fconfig* fc=figure->fc;
   ASSERTM(fc->state==FIGURE_STATE_CREATED,"figure_show called again\n");
   raylib_init(figure,window_title,width,height,fps);//figure state will now be FIGURE_STATE_RUUNING
-  figure->force_update=true;//trigger updates the first loop    
+  figure->force_update=true;//trigger updates the first loop
   while (!WindowShouldClose()) {
-    raylib_init_loop();
+    raylib_init_loop(figure);
     BeginDrawing();
     ClearBackground(figure->theme.bg);
-    figure_update(figure);    
+    figure_update(figure);
+    DrawFPS(0,0);
     EndDrawing();
   }
   CloseWindow();
@@ -170,7 +179,7 @@ void figure_set_view_data(Figure* figure, size_t len, char *xformat, double *xda
   ASSERT(figure);
   ASSERT(len>0);
   ASSERT(xdata);
-  Fconfig* fc=figure->fc;    
+  Fconfig* fc=figure->fc;
   ASSERTM(!fc->vd.len,"view data can only be called once. use figure_set_xdata\n");
   fc->vd.len=len;
   fc->vd.vlen=MIN(VIEWPORT_INITIAL_LEN,len);
@@ -201,7 +210,7 @@ void figure_update_xdata(Figure* figure, double* xdata)
 static void figure_compile(Figure* figure)
 {
   ASSERT(figure->fc->nc);
-  figure_create_axes(figure);    
+  figure_create_axes(figure);
 }
 
 
@@ -212,11 +221,13 @@ static void figure_create_axes(Figure *figure)
   fc->rects=arena_alloc(figure->arena,sizeof(Axes)*(fc->axes_count));
   memset( figure->axes,0,sizeof(Axes)*fc->axes_count);
   memset( fc->rects,0,sizeof(fc->rects)*fc->axes_count);
-  for(size_t i=0;i<fc->axes_count;++i){    
+  for(size_t i=0;i<fc->axes_count;++i){
     figure->axes[i]=(Axes){
       .area=fc->rects+i,
       .fig=figure
-    };           
+    };
+    figure->axes[i].ylabel.format=str_create_with_arena(figure->arena,AXES_YLABEL_MAX_LEN);
+    str_append(figure->axes[i].ylabel.format,"%s","%f");
   }
 }
 
@@ -273,68 +284,89 @@ static void figure_mode_bar_draw(Figure *figure)
   Fconfig *fc=figure->fc;
   if(!fc->mode_bar.is_visible)return;
   Rect area=fc->mode_bar.area;
+  Vd vd=fc->vd;
   DrawRectangleLines(NODE_RECT_UNWRAP(area),figure->theme.fg);
 #define LEN 128
   char buf_[LEN]={0};
   char* buf=str_create(buf_,LEN);
   Theme theme=figure->theme;
-  Vector2 v=GetMouseDelta();
-  str_append(buf," X:%d Y:%d Delta(%f %f)", GetMouseX(),GetMouseY(),v.x,v.y);
+  str_append(buf,"[%zu:%zu:%zu]/%zu %f",vd.start,vd.stop,vd.vlen,vd.len,vd.raw_start);
   DrawTextEx(fc->font,buf,(Vector2){area.x+1,area.y+1},theme.font_size,theme.font_spacing,theme.fg);
 }
 
-static Axes* get_axes_under_mouse(Figure* figure)
-{
-  for(size_t i=0;i<figure->fc->axes_count;++i){
-    if(CheckCollisionPointRec(GetMousePosition(),NODE_RECT2RECTANGLE(figure->fc->rects[i])))
-      return figure->axes+i;
-  }
-  return NULL;
-}
-  
 static void figure_handle_inputs(Figure* figure)
 {
   Fconfig *fc=figure->fc;
   Vd vd=fc->vd;
   Vector2 *velocity=&vd.velocity;
   int need_update=0;
-  if(IsWindowResized())need_update=1;
   Vector2 md=GetMouseDelta();
   Axes* aum=get_axes_under_mouse(figure);
-  int xmdmax=fabsf(md.x)>fabsf(md.y);
-  
-  //dragging with mouse horiz && vertical
+  int has_artists=aum?aum->artist_len>0:0;
+  int mbd=IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+
+
   if(vd.aum!=aum){
     vd.aum=aum;
     vd.wait_mouse_up=true;
   }
-  if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT))vd.wait_mouse_up=false;
-  if(!vd.wait_mouse_up && aum && IsMouseButtonDown(MOUSE_BUTTON_LEFT)){
-    if(xmdmax){
-      velocity->x+=(-md.x/aum->area->w)*VELOCITY_SCALE;
-    }if(fabsf(md.y)>fabsf(md.x)){
-      velocity->y+=(-md.y/aum->area->h)*VELOCITY_SCALE;
-    }
+  if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)){
+    vd.wait_mouse_up=false;
+    *velocity=(Vector2){0,0};
   }
-  if(fabsf(velocity->x)>MINIMUM_VELOCITY)velocity->x*=vd.decay;
-  if(fabsf(velocity->y)>MINIMUM_VELOCITY)velocity->y*=vd.decay;
-  double myd;
-  if(fabsf(velocity->x)>MINIMUM_VELOCITY){
-    myd=fmax(0.f,vd.start+velocity->x*vd.vlen);
-    if(myd+vd.vlen>vd.len){
-        myd=(double)vd.len-vd.vlen;
-        velocity->x=0.f;
-      }
-    vd.stop=myd+vd.vlen;
-    vd.start=myd;
-    if(vd.start==0)velocity->x=0.f;
-    vd.xoffset=velocity->x*vd.vlen;
-    vd.xoffset=vd.xoffset-floor(vd.xoffset);
+  if(!vd.wait_mouse_up && aum && mbd){
+    if(fabsf(md.x)>fabsf(md.y)) velocity->x+=(-md.x/aum->area->w);
+    if(fabsf(md.y)>fabsf(md.x)) velocity->y=(-md.y/aum->area->h);
+  }
+  //dragging with mouse horiz 
+  if(velocity->x!=0.f){
+    double max_offset=vd.vlen*vd.max_offset;
+    vd.raw_start=fmin(vd.len+max_offset-vd.vlen,fmax(-max_offset,(vd.raw_start+velocity->x*vd.vlen)));
+    size_t l=fmax(0.f, vd.raw_start)+vd.vlen;
+    vd.offsetx=(vd.raw_start<0)?vd.raw_start:
+      (l>vd.len)?vd.raw_start+vd.vlen-vd.len:
+      vd.raw_start-floor(vd.raw_start);
+    velocity->x*=vd.decay;
+    if(fabsf(velocity->x)<MINIMUM_VELOCITY)velocity->x=0.f;
     need_update=1;
   }
-    
-    
- 
-  if(!figure->force_update)figure->force_update=need_update;
+
+  //dragging with mouse vert
+  if(velocity->y != 0.f && md.y != 0.f &&has_artists &&mbd){;
+    vd.offsety-=velocity->y;
+    if(fabs(vd.offsety)>vd.max_offset)vd.offsety=vd.offsety>0?vd.max_offset:-vd.max_offset;
+    need_update=1;
+  }
+
+  //reset with KEY_R
+  if(IsKeyPressed(KEY_R)){
+    velocity->x=velocity->y=0.f;
+    vd.offsety=0.f;
+    need_update=1;
+  }
+
+  //zoomx
+  Vector2 wm=GetMouseWheelMoveV();
+  if(aum && wm.y!=0.f && has_artists){
+    int toc=(2.f*ZOOMX_SCALE*wm.y*-1);
+    long long vlen=vd.vlen+toc;
+    size_t pvlen=vd.vlen;
+    vd.vlen=MIN(MAX(1,vlen),vd.len);
+    vlen=vd.vlen-pvlen;
+    float left=(GetMouseX()-aum->area->x)/aum->area->w*vlen;
+    vd.raw_start-=left;
+    vd.raw_start=fmin(vd.len-vd.vlen,fmax(0,(vd.raw_start+velocity->x*vd.vlen)));
+    need_update=1;
+  }
+
+  //finally 
+  {
+    vd.start=fmax(0.f,vd.raw_start);
+    size_t l=vd.start+vd.vlen;
+    if(l>vd.len) vd.start = vd.len-vd.vlen;
+    vd.stop=vd.start+vd.vlen;
+    if(l<vd.len)vd.stop+=1;
+  }
+  if(need_update)figure->force_update=need_update;
   fc->vd=vd;
 }

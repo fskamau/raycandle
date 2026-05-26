@@ -125,8 +125,8 @@ static Limit artist_candle_get_limit(Artist* artist, Axes* axes){
   Vd vd=axes->fig->fc->vd;
   size_t len=axes->fig->fc->vd.len;
   double *data=artist->data;
-  Limit l1=get_lim(data+(len*1)+vd.start,vd.vlen);//o,[h],l,c
-  Limit l2=get_lim(data+(len*2)+vd.start,vd.vlen);//o,h,[l],c
+  Limit l1=get_lim(data+(len*1)+vd.start,vd.stop-vd.start);//o,[h],l,c
+  Limit l2=get_lim(data+(len*2)+vd.start,vd.stop-vd.start);//o,h,[l],c
   double array_lim[4]={l1.min,l1.max,l2.min,l2.max};
   Limit lim=get_lim(array_lim,4);
   return lim;
@@ -162,9 +162,9 @@ static void  artist_candle_draw(Artist* artist, Axes* axes, Rect area)
 {
   Vd vd=axes->fig->fc->vd;
   double *data=artist->data;
-  float w_use_ratio=0.7;
+  float w_use_ratio=0.6;
   float w_use=w_use_ratio*axes->w;
-  float w_offset=(1.f-w_use_ratio)*0.5*axes->w;
+  float w_offset=(1.f-w_use_ratio)*0.0*axes->w;
   size_t rc=0;
   for(size_t i=vd.start;i<vd.stop;++i,++rc){
     double cl[4]={
@@ -176,10 +176,12 @@ static void  artist_candle_draw(Artist* artist, Axes* axes, Rect area)
     Limit limy=(Limit){.min=area.y+area.h,.max=area.y};
     scale_to_limit(cl,cl,4,axes->lim,limy);
     float sx=(axes->w*rc)+w_offset+area.x;
-    Color c=artist->colors[(cl[0]>cl[3])?0:1];    
-    DrawRectangleLines(sx,fmin(cl[0],cl[3]),w_use,fabs(cl[0]-cl[3]),c);
+    Color c=artist->colors[(cl[0]>cl[3])?0:1];
+    double min_oc=fmin(cl[0],cl[3]);
+    DrawRectangleLines(sx,min_oc,w_use,fabs(cl[0]-cl[3]),c);
     float xmiddle=sx+w_use*0.5;
     DrawLine(xmiddle,cl[1],xmiddle,fmin(cl[0],cl[3]),c);
     DrawLine(xmiddle,fmax(cl[0],cl[3]),xmiddle,cl[2],c);
   }
 }
+

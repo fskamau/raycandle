@@ -74,3 +74,6 @@ Color axes_get_next_tableau_t10_color(Axes *axes)
   axes->tableau_t10_index %= 10;
   return color;
 }
+
+
+  

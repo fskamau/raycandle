@@ -18,6 +18,9 @@
 
 #define LIMIT_PRINT(l) printf("Limit(min=%f, max:%f)\n",(l).min, (l).max)
 
+typedef struct Axes Axes;
+typedef struct Figure Figure;
+
 
 
 #endif //_RAYCANDLE_UTILS_

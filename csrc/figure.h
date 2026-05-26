@@ -27,7 +27,9 @@ struct Vd{
   Axes* aum;
   int wait_mouse_up;
   float decay;
-  float xoffset;//offset x with some epsilon for smoothness
+  double raw_start;
+  float offsetx,offsety;
+  float max_offset;
 };//view data
 
 
@@ -61,17 +63,9 @@ void figure_set_window_title(Figure* figure, char *wtitle);
 void figure_show(Figure* figure, char* window_title, int width, int height, int fps); //run the disp loop until the window is closed. for finegrained control use the function below
 
 //===control the event loop manually====
-void raylib_init(Figure *figure,char *window_title,int width, int height, int fps); //calles initWindow
-/* while (!WindowShouldClose()){ */
+void raylib_init(Figure *figure,char *window_title,int width, int height, int fps); //calls initWindow
 void raylib_init_loop(); //call every loop to set up keyboard events
-/* BeginDrawing();{ */
-/* ClearBackground(); */
-void figure_update(Figure* figure); //call to update the figure e.g axes etc
-/* } */
-/*    EndDrawing(); */
-/*    } */
-/*    CloseWindow(); */
-/*    } */
+void figure_update(Figure* figure); //call every loo[ to update the figure e.g axes etc
 
 
 

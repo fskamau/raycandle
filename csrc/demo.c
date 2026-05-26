@@ -6,7 +6,7 @@
 #include "artist.h"
 
 
-#define LEN (size_t)500
+#define LEN (size_t)100
 int main(){
   Arena *arena=arena_create(1024*1024*1024);
   NC* nc=nc_create(1024*1024*1024);
@@ -20,18 +20,15 @@ int main(){
   fread(data, sizeof(double),LEN*(4+1),f);
   fclose(f);
 
-  
   figure_set_view_data(figure,LEN,0,data);
   Theme theme=figure->theme;
-  theme.font_size=32;
+  /* theme.font_size=32; */
   theme.font_path= "/home/ve/Downloads/home/raycandle1/.raycandle/raycandle/fonts/iosevka-regular.ttf";
   figure_set_theme(figure, theme);
+  
 
   LineData ldata;
-  
-
-  
-  
+    
   ldata=(LineData){.is_relative=0,
                   .is_splined=1,
                   .data=data+(LEN*4)};
