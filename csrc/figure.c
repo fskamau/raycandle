@@ -41,7 +41,7 @@ static void figure_update_xlim(Figure* figure);
 static void insert_bar(bool top, Rect* src, Rect* dest, size_t height, float spacing);
 static void figure_mode_bar_draw(Figure *figure);
 static void figure_handle_inputs(Figure* figure);
-
+static void  figure_draw_cursors(Figure *figure);
 
 static Figure* figure_create_()
 {
@@ -139,6 +139,7 @@ void figure_update(Figure* figure){
     if(figure->force_update)axes_update_limy(figure->axes+i);
     axes_draw(figure->axes+i);
   }
+  figure_draw_cursors(figure);
   figure_mode_bar_draw(figure);
   figure->force_update=false;
 }
@@ -191,6 +192,12 @@ void figure_set_view_data(Figure* figure, size_t len, char *xformat, double *xda
   }
 }
 
+void figure_update_xdata(Figure* figure, double* xdata)
+{
+  validate_figure_update_xdata_args(figure, xdata);
+  figure_update_xdatar(figure,xdata,0,figure->fc->vd.len);
+}
+
 
 void figure_update_xdatar(Figure* figure, double* xdata,size_t start, size_t stop)
 {
@@ -201,11 +208,13 @@ void figure_update_xdatar(Figure* figure, double* xdata,size_t start, size_t sto
   memcpy(fc->xdata+start,xdata,sizeof(*fc->xdata)*(stop-start));
 }
 
-void figure_update_xdata(Figure* figure, double* xdata)
+
+void figure_show_cursors(Figure* figure)
 {
-  validate_figure_update_xdata_args(figure, xdata);
-  figure_update_xdatar(figure,xdata,0,figure->fc->vd.len);
+  ASSERT(figure);
+  figure->fc->show_cursors=1;
 }
+
 
 static void figure_compile(Figure* figure)
 {
@@ -369,4 +378,30 @@ static void figure_handle_inputs(Figure* figure)
   }
   if(need_update)figure->force_update=need_update;
   fc->vd=vd;
+}
+
+
+static void  figure_draw_cursors(Figure *figure)
+{
+  if(!figure->fc->show_cursors)return;
+  Theme theme=figure->theme;
+  Vector2 mp=GetMousePosition();
+  Axes* aum=get_axes_under_mouse(figure);
+  if(!aum||!aum->artist_len)return;
+  Rect area=*aum->area;
+  double mreal=scale_to_limitf(mp.y, (Limit){area.y,area.y+area.h},aum->lim);
+  float px=mp.x/area.w;
+  Color c=Fade(theme.fg,0.5);
+  for(size_t i=0;i<figure->fc->axes_count;++i){
+    Axes axes=figure->axes[i];
+    Rect areax=*axes.area;
+    if(!axes.artist_len)continue;
+    float pixely=scale_to_limitf(mreal,axes.lim,(Limit){areax.y,areax.y+areax.h});
+    int pxv=px*areax.w+areax.x;
+    DrawLine(pxv,areax.y,pxv,areax.y+areax.h,c);
+    DrawLine(areax.x,pixely,areax.x+areax.w,pixely,c);
+    
+  
+
+  }
 }

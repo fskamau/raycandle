@@ -37,9 +37,12 @@ int main(){
     
   artist_create(figure->axes,ARTIST_TYPE_CANDLE,1.0,(Color[2]){GetColor(0x079981ff),GetColor(0xf23645ff)},data+LEN);
 
+    artist_create(figure->axes+2,ARTIST_TYPE_CANDLE,1.0,(Color[2]){GetColor(0x079981ff),GetColor(0xf23645ff)},data+LEN);
+
   
     /* artist_create(figure->axes,ARTIST_TYPE_LINE,1.0,&RED,data); */
     /*   artist_create(figure->axes,ARTIST_TYPE_LINE,1.0,&RED,data); */
+  figure_show_cursors(figure);
   figure_show(figure,NULL,720,1280,20);
  
   return 0;

@@ -52,6 +52,7 @@ struct Fconfig {
   char* xformat;
   Bar title_bar;
   Bar mode_bar;
+  int show_cursors;
 };
 
 
@@ -67,8 +68,8 @@ void raylib_init(Figure *figure,char *window_title,int width, int height, int fp
 void raylib_init_loop(); //call every loop to set up keyboard events
 void figure_update(Figure* figure); //call every loo[ to update the figure e.g axes etc
 
-
-
-
 void figure_update_xdata(Figure* figure, double* xdata);//update the xdata with new data
 void figure_update_xdatar(Figure* figure, double* xdata,size_t start, size_t stop);//update the xdata with new data with a range
+
+void figure_show_cursors(Figure* figure);
+

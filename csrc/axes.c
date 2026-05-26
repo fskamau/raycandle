@@ -15,7 +15,7 @@ static void axes_draw_ylabel(Axes* axes);
 
 void axes_draw(Axes* axes){
   Vd vd=axes->fig->fc->vd;        
-  Rect *area=axes->area;
+  Rect *area=axes->area,clip;
 
   {
     DrawRectangleLines(NODE_RECT_UNWRAP(*area),axes->fig->theme.fg);
@@ -28,13 +28,14 @@ void axes_draw(Axes* axes){
   Artist* artist=axes->artist;
   if(!artist)return;
 
-  area->x-=vd.offsetx*axes->w;
-  area->w+=vd.offsetx*axes->w;
+  clip=*area;
+  clip.x=area->x-vd.offsetx*axes->w;
+  clip.w=area->w+vd.offsetx*axes->w;
   artist=axes->artist;
   
-  BeginScissorMode(NODE_RECT_UNWRAP(*area));
+  BeginScissorMode(NODE_RECT_UNWRAP(clip));
   while(artist){
-    artist->avt->draw(artist,axes,*area);
+    artist->avt->draw(artist,axes,clip);
     artist=artist->next;    
   }
   EndScissorMode();
