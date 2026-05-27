@@ -170,3 +170,16 @@ void str_summarize(char* s){
   StrHeader* hdr=str_get_hdr(s);
   printf("Str(cap: %zu len: %zu external: %u)\n",hdr->capacity,hdr->len,hdr->is_external);
 }
+
+
+char* str_cur(char *s)
+{
+  StrHeader* hdr=str_get_hdr(s);
+  return s+hdr->len;
+}
+
+size_t str_rem(char* s)
+{
+  StrHeader* hdr=str_get_hdr(s);
+  return hdr->capacity-hdr->len;
+}

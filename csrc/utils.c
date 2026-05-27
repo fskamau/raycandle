@@ -2,7 +2,7 @@
 #include "arena.h"
 #include <math.h>
 #include "raycandle.h"
-
+#include <time.h>
 
 static const Color tableau_colors[10] = {
     {31, 119, 191, 255},  // Blue
@@ -77,3 +77,44 @@ Color axes_get_next_tableau_t10_color(Axes *axes)
 
 
   
+
+
+float align_text(Font *font, const char *text, int width, int font_size, int spacing, Alignment alignment)
+{
+  float f = MeasureTextEx(*font, text, font_size, spacing).x;
+  if (f == 0.f) {
+    f = MeasureText(text, font_size);
+  }
+  if ((float)width < f) {
+    return 0.f;
+  }
+  switch (alignment) {
+  case ALIGNMENT_CENTER:
+    return (width - f) / 2;
+  case ALIGNMENT_LEFT:
+    return 0.f;
+  case ALIGNMENT_RIGHT:
+    return width - f;
+  }
+  ray_error("unknown alignment state\n");
+  return 0.f;
+}
+
+void epoch2strftime(int epoch, Str buffer, const char *format)
+{
+  unsigned int len_buffer;
+  int written;
+  ASSERT(format != NULL);
+  time_t raw_time = epoch;
+  if (epoch == 0) {
+    time(&raw_time);
+  }
+  struct tm tm = *localtime(&raw_time);
+  written = strftime(str_cur(buffer),
+                     (len_buffer = str_rem(buffer)), format, &tm);
+  if (written == 0) {
+    fprintf(stderr, "strftime(%s) would exceed buffer size of %d bytes.\n",
+            format, len_buffer);
+    exit(1);
+  }
+}

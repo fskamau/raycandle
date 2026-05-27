@@ -111,7 +111,7 @@ struct Figure {
 };
 
 void figure_set_theme(Figure* figure, Theme theme);
-void figure_set_view_data(Figure* figure, size_t len, char *xformat, double *xdata); //set view data
+void figure_set_view_data(Figure* figure, size_t len, char *xformat, double *xdata, size_t timeframe); //set view data
 
 double scale_to_limitf(double val, Limit src, Limit dest);
 void scale_to_limit(const double *data, double *dest, size_t count, Limit srcl, Limit destl);

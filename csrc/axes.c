@@ -15,42 +15,39 @@ static void axes_draw_ylabel(Axes* axes);
 
 void axes_draw(Axes* axes){
   Vd vd=axes->fig->fc->vd;        
-  Rect *area=axes->area,clip;
+  Rect area=*axes->area,clip;
+  area.w+=axes->ylabel.area.w;
 
   {
-    DrawRectangleLines(NODE_RECT_UNWRAP(*area),axes->fig->theme.fg);
-    area->x+=1;
-    area->y+=1;
-    area->w-=2;
-    area->h-=2;  
+    DrawRectangleLines(NODE_RECT_UNWRAP(area),axes->fig->theme.fg);
+    area.x+=1;
+    area.y+=1;
+    area.w-=(2+axes->ylabel.area.w);
+    area.h-=2;
   }
-  axes_set_ylabel_len(axes);
   Artist* artist=axes->artist;
   if(!artist)return;
 
-  clip=*area;
-  clip.x=area->x-vd.offsetx*axes->w;
-  clip.w=area->w+vd.offsetx*axes->w;
+  clip=area;
+  area.x-=vd.offsetx*axes->w;
   artist=axes->artist;
-  
   BeginScissorMode(NODE_RECT_UNWRAP(clip));
   while(artist){
-    artist->avt->draw(artist,axes,clip);
+    artist->avt->draw(artist,axes,area);
     artist=artist->next;    
   }
   EndScissorMode();
   axes_draw_ylabel(axes);
 }
 
-void axes_update_limy(Axes* axes)
+void axes_update_ylim(Axes* axes)
 {
   Artist* artist=axes->artist;
   if(!artist)return;
-  Rect area=*axes->area;
   Limit lim=(Limit){NAN,NAN};
   Vd vd=axes->fig->fc->vd;        
-  ASSERT(vd.vlen!=0);
-  axes->w=area.w/(vd.vlen);
+  ASSERT(vd.vlen!=0); 
+  
   while(artist&&artist->is_limitable){
     Limit tlim=artist->avt->get_limit(artist,axes);
     if (!isnan(tlim.min)) {
@@ -59,8 +56,7 @@ void axes_update_limy(Axes* axes)
       } else if (tlim.min < lim.min) {
         lim.min = tlim.min;
       }
-    }
-    
+    }    
     if (!isnan(tlim.max)) {
       if (isnan(lim.max)) {
         lim.max = tlim.max;
@@ -77,6 +73,9 @@ void axes_update_limy(Axes* axes)
     lim.max+=diff;
   }
   axes->lim=lim;
+
+  axes_set_ylabel_len(axes);//measure out label
+  axes->w=axes->area->w/(vd.vlen);
 }
 
 
@@ -110,13 +109,13 @@ static void axes_set_ylabel_len(Axes* axes)
   area->w=MeasureTextEx(font,buf,theme.font_size,theme.font_spacing).x;
 
   area->w=MAX(a,area->w);
-  area->w=YLABEL_STROKE_SIZE+YLABEL_GAP+area->w+YLABEL_GAP;
+  area->w=YLABEL_GAP+YLABEL_STROKE_SIZE+YLABEL_GAP+area->w+YLABEL_GAP;
 
   area->x=axes->area->x+axes->area->w-area->w;
   area->y=axes->area->y;
   area->h=axes->area->h;
   
-  axes->area->w-=(area->w);
+  axes->area->w-=area->w;
 }
 
 void axes_set_yformatter(Axes* axes,char* format)
@@ -132,6 +131,11 @@ static void axes_draw_ylabel(Axes* axes)
 {
   if(!axes->artist_len)return;
   Rect area=axes->ylabel.area;
+
+  //adjust gap
+  area.x+=YLABEL_GAP;
+  area.w-=YLABEL_GAP;
+  
   Theme theme=axes->fig->theme;
   Font font=axes->fig->fc->font;
   size_t label_count=area.h/(theme.font_size+YLABEL_PADDING);
@@ -151,7 +155,7 @@ static void axes_draw_ylabel(Axes* axes)
   for(size_t i=0;i<label_count;++i){
     float y=area.y+i*(YLABEL_PADDING+theme.font_size)+YLABEL_PADDING;
     int diffm=mousey-y;
-    if(diffm >0&& diffm<theme.font_size+half_font)continue;
+    if(aum && diffm >0&& diffm<theme.font_size+half_font)continue;
     DrawLine(area.x,y+half_font,area.x+YLABEL_STROKE_SIZE,y+half_font,Fade(theme.fg,0.8));
     double value=scale_to_limitf(y+half_font,srcl,axes->lim);
     str_clear(buf);

@@ -18,9 +18,16 @@
 
 #define LIMIT_PRINT(l) printf("Limit(min=%f, max:%f)\n",(l).min, (l).max)
 
-typedef struct Axes Axes;
-typedef struct Figure Figure;
+
+typedef enum {
+  ALIGNMENT_LEFT,
+  ALIGNMENT_CENTER,
+  ALIGNMENT_RIGHT,
+} Alignment;
 
 
+typedef struct Font Font;
+float align_text(Font *font, const char *text, int width, int font_size, int spacing, Alignment alignment);
+void epoch2strftime(int epoch, Str buffer, const char *format);
 
 #endif //_RAYCANDLE_UTILS_

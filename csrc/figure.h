@@ -53,6 +53,7 @@ struct Fconfig {
   Bar title_bar;
   Bar mode_bar;
   int show_cursors;
+  size_t timeframe;
 };
 
 

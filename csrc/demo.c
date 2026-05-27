@@ -4,7 +4,7 @@
 #include "node.h"
 #include "raycandle.h"
 #include "artist.h"
-
+#include <string.h>
 
 #define LEN (size_t)100
 int main(){
@@ -20,7 +20,7 @@ int main(){
   fread(data, sizeof(double),LEN*(4+1),f);
   fclose(f);
 
-  figure_set_view_data(figure,LEN,0,data);
+  figure_set_view_data(figure,LEN,"%a/%d/%m %H:%M:%S",data,60);
   Theme theme=figure->theme;
   /* theme.font_size=32; */
   theme.font_path= "/home/ve/Downloads/home/raycandle1/.raycandle/raycandle/fonts/iosevka-regular.ttf";
@@ -28,22 +28,34 @@ int main(){
   
 
   LineData ldata;
-    
+
+  double *mym=arena_alloc(arena,sizeof(double)*LEN);
+  memcpy(mym, data+LEN,sizeof(double)*LEN);
   ldata=(LineData){.is_relative=0,
                   .is_splined=1,
-                  .data=data+(LEN*4)};
+                  .data=mym};
+
+  
+
+  artist_create(figure->axes+1,ARTIST_TYPE_LINE,1.0,&RED,&ldata);
+
   
   /* artist_create(figure->axes,ARTIST_TYPE_LINE,2.0,NULL,&ldata); */
     
   artist_create(figure->axes,ARTIST_TYPE_CANDLE,1.0,(Color[2]){GetColor(0x079981ff),GetColor(0xf23645ff)},data+LEN);
 
+    artist_create(figure->axes+5,ARTIST_TYPE_CANDLE,1.0,(Color[2]){GetColor(0x079981ff),GetColor(0xf23645ff)},data+LEN);
+  
+  
     artist_create(figure->axes+2,ARTIST_TYPE_CANDLE,1.0,(Color[2]){GetColor(0x079981ff),GetColor(0xf23645ff)},data+LEN);
 
   
     /* artist_create(figure->axes,ARTIST_TYPE_LINE,1.0,&RED,data); */
     /*   artist_create(figure->axes,ARTIST_TYPE_LINE,1.0,&RED,data); */
+    for(size_t i=0;i<6;++i)
+      axes_set_yformatter(figure->axes+i, "%.2f");
   figure_show_cursors(figure);
-  figure_show(figure,NULL,720,1280,20);
+  figure_show(figure,"%f",720,1280,20);
  
   return 0;
 }
