@@ -9,15 +9,15 @@
 typedef char*  Str;
 typedef enum {
   LEGEND_POSITION_NO_LEGEND = 0,
-  LEGEND_POSITION_TOP_LEFT = 1,
-  LEGEND_POSITION_TOP_RIGHT = 2,
-  LEGEND_POSITION_BOTTOM_LEFT = 3,
-  LEGEND_POSITION_BOTTOM_RIGHT = 4,
+  LEGEND_POSITION_TOP_LEFT ,
+  LEGEND_POSITION_TOP_RIGHT ,
+  LEGEND_POSITION_BOTTOM_LEFT ,
+  LEGEND_POSITION_BOTTOM_RIGHT ,
 } LegendPosition;
 
 typedef struct Figure Figure;
 typedef struct {
-  Str str;
+  size_t llen;
   LegendPosition lp;
 }Legend;
 
@@ -107,15 +107,41 @@ struct Figure {
   Fconfig* fc;
   Axes* axes;
   Limit xlim;
-
 };
-
-void figure_set_theme(Figure* figure, Theme theme);
-void figure_set_view_data(Figure* figure, size_t len, char *xformat, double *xdata, size_t timeframe); //set view data
 
 double scale_to_limitf(double val, Limit src, Limit dest);
 void scale_to_limit(const double *data, double *dest, size_t count, Limit srcl, Limit destl);
 Limit get_lim(const double *data, size_t len);
+
+
+
+//artist
+Artist* artist_create(Axes *axes, ArtistType atype, float thick, Color* colors, const char* label ,void *data);
+
+//axes
+void axes_show_legend(Axes* axes, LegendPosition lp);
+
+//figure
+Figure* figure_create(size_t rows, size_t cols);
+Figure *figure_createn(NC* nc); // manually set the nodes. it will call nc_compile(nc)
+
+void figure_set_theme(Figure* figure, Theme theme);
+
+void figure_set_title(Figure* figure, char *title);
+void figure_set_window_title(Figure* figure, char *wtitle);
+void figure_set_view_data(Figure* figure, size_t len, char *xformat, double *xdata, size_t timeframe); //set view data
+void figure_show(Figure* figure, char* window_title, int width, int height, int fps); //run the disp loop until the window is closed. for more control look at figure.h use the function below
+
+void figure_update_xdata(Figure* figure, double* xdata);//update the xdata with new data
+void figure_update_xdatar(Figure* figure, double* xdata,size_t start, size_t stop);//update the xdata with new data with a range
+
+void figure_show_cursors(Figure* figure);
+void figure_show_legends(Figure* figure, LegendPosition lp);
+
+//===control the event loop manually====
+void raylib_init(Figure *figure,char *window_title,int width, int height, int fps); //calls initWindow
+void raylib_init_loop(); //call every loop to set up keyboard events
+void figure_update(Figure* figure); //call every loo[ to update the figure e.g axes etc
 
 
 #endif //__RAYCANDLE_H__

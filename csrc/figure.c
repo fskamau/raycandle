@@ -41,7 +41,8 @@ static void figure_update_xlim(Figure* figure);
 static void insert_bar(bool top, Rect* src, Rect* dest, size_t height, float spacing);
 static void figure_mode_bar_draw(Figure *figure);
 static void figure_handle_inputs(Figure* figure);
-static void  figure_draw_cursors(Figure *figure);
+static void figure_draw_cursors(Figure *figure);
+static void figure_axes_init(Figure* figure);
 
 static Figure* figure_create_()
 {
@@ -102,6 +103,7 @@ void raylib_init(Figure *figure,char *window_title,int width, int height, int fp
   InitWindow( height,width, window_title?window_title:DEFAULT_WINDOW_TITLE);
   SetTargetFPS(fps);
   load_font(figure);
+  figure_axes_init(figure);
   figure->fc->state=FIGURE_STATE_RUNNING;
   ready_signal_set(figure->fc->signal_initialized);
 }
@@ -158,7 +160,6 @@ void figure_show(Figure* figure, char* window_title, int width, int height, int 
     BeginDrawing();
     ClearBackground(figure->theme.bg);
     figure_update(figure);
-    DrawFPS(0,0);
     EndDrawing();
   }
   CloseWindow();
@@ -193,7 +194,7 @@ void figure_set_view_data(Figure* figure, size_t len, char *xformat, double *xda
   fc->xdata=arena_alloc(figure->arena,sizeof(*fc->xdata)*len); //always alloc since update_xdata or update_xdatar maybe called elsewhere
   memcpy((fc->xdata=arena_alloc(figure->arena,sizeof(*fc->xdata)*len)),xdata,sizeof(*fc->xdata)*len);
   if(xformat){
-    fc->xformat=str_createf("%s", xformat);
+    fc->xformat=str_createf_with_arena(figure->arena,"%s", xformat);
   }
 }
 
@@ -218,6 +219,14 @@ void figure_show_cursors(Figure* figure)
 {
   ASSERT(figure);
   figure->fc->show_cursors=1;
+}
+
+
+void figure_show_legends(Figure* figure, LegendPosition lp)
+{
+  ASSERT(figure);
+  for(size_t i=0;i<figure->fc->axes_count;++i)
+    axes_show_legend(figure->axes+i,lp);
 }
 
 
@@ -306,13 +315,10 @@ static void figure_mode_bar_draw(Figure *figure)
   str_append(buf,"showing %zu/%zu ",vd.vlen,vd.len);
   Axes *aum=get_axes_under_mouse(figure);
   if(aum && aum->artist_len){
-    size_t eff_vlen=vd.vlen;
     int skip=0;
-    size_t eff_len=vd.vlen;
     float mx=(GetMouseX()-aum->area->x)/aum->area->w;
     float r=fabs(vd.offsetx)/vd.vlen;
     if(fabs(vd.offsetx)>1.0){
-        eff_vlen=vd.vlen-fabs(vd.offsetx);
         skip=vd.offsetx<0.f?mx<r:mx>1.f-r;
         if(vd.offsetx<0.0)mx-=r;
         else mx+=r;
@@ -323,7 +329,7 @@ static void figure_mode_bar_draw(Figure *figure)
       epoch2strftime(epoch,buf, fc->xformat);
     }
   }
-  float x=align_text(&fc->font,buf,area.w, theme.font_size,theme.spacing, ALIGNMENT_RIGHT);
+  float x=align_text(&fc->font,buf,area.w, theme.font_size,theme.spacing, ALIGNMENT_LEFT);
   DrawTextEx(fc->font,buf,(Vector2){x+area.x,area.y+1},theme.font_size,theme.font_spacing,WHITE);
 }
 
@@ -437,3 +443,18 @@ static void  figure_draw_cursors(Figure *figure)
 
 
 
+static void figure_axes_init(Figure* figure)
+{
+  const int buflen=256;  
+  char buf_[buflen];
+  Theme theme=figure->theme;
+  Font font=figure->fc->font;
+  char* buf=str_create(buf_,buflen);
+  for(size_t i=0;i<figure->fc->axes_count;++i){
+    Axes* axes=figure->axes+i;
+    if(!axes->artist_len)continue;
+    str_clear(buf);
+    for(size_t x=0;x<axes->legend.llen;++x)str_append(buf,"%s"," ");
+    axes->legend.llen=MeasureTextEx(font, buf, theme.font_size,theme.font_spacing).x;
+  }    
+}

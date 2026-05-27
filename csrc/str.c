@@ -45,20 +45,11 @@ static const char* str_strerror(StrError err) {
 #define STR_HEADER_SIZE ((sizeof(StrHeader) + (STR_ALIGNMENT - 1)) & ~(STR_ALIGNMENT - 1))
 
 
+static inline StrHeader* str_get_hdr(char* s);
+static char* str_createv(Arena* arena, const char* fmt, va_list args);
 
-static inline StrHeader* str_get_hdr(char* s) {
-  if (!s) STR_FAIL(STR_ERR_NULL);
-  StrHeader* hdr=(StrHeader*)(s - STR_HEADER_SIZE);
-  if(hdr->capacity==0||
-     (long long)hdr->len<0 ||
-     (long long)hdr->capacity<0||
-     hdr->len>hdr->capacity)
-    STR_FAIL(STR_ERR_CORRUPT);   
-  return hdr;
-}
-
-
-char* str_create(char* external_buf, size_t buf_size) {
+char* str_create(char* external_buf, size_t buf_size)
+{
     StrHeader* hdr = NULL;
     size_t total_needed;
     if (external_buf) {
@@ -84,46 +75,32 @@ char* str_create(char* external_buf, size_t buf_size) {
     return data;
 }
 
-static char* str_createv(const char* fmt, va_list args)
+char* str_createf_with_arena(Arena* arena, const char* fmt, ...)
 {
-    if (!fmt) {
-        return str_create(NULL, 0);
-    }
-    va_list args_copy;
-    va_copy(args_copy, args);
-    int needed = vsnprintf(NULL, 0, fmt, args_copy);
-    va_end(args_copy);
-    if (needed < 0) {
-        STR_FAIL_MSG("str_createv: encoding error during size check");
-    }
-    size_t length = (size_t)needed;
-    char* s = str_create(NULL, length);
-    StrHeader* hdr = str_get_hdr(s);
-    size_t available = hdr->capacity;
-    int written = vsnprintf(s, available + 1, fmt, args);
-    if (written < 0 || (size_t)written > available) 
-        STR_FAIL_MSG("str_createv: format write failed unexpectedly");
-    hdr->len = (size_t)written;
-    return s;
-}
-
-
-char* str_createf(const char* fmt, ...) {
     va_list args;
     va_start(args, fmt);
-    char* s = str_createv(fmt, args);
+    char* s = str_createv(arena, fmt, args);
     va_end(args);
     return s;
 }
 
+char* str_createf(const char* fmt, ...) 
+{
+    va_list args;
+    va_start(args, fmt);
+    char* s = str_createv(NULL, fmt, args);
+    va_end(args);
+    return s;
+}
 
 char* str_create_with_arena(Arena* arena, size_t buf_size)
 {
   return str_create(arena_alloc(arena,STR_HEADER_SIZE+buf_size+1),buf_size+STR_HEADER_SIZE+1);
- }
+}
 
 
-void str_free(char* s) {
+void str_free(char* s)
+{
     StrHeader* hdr = str_get_hdr(s);
     int was_external = hdr->is_external;
     hdr->len = 0;
@@ -133,7 +110,9 @@ void str_free(char* s) {
     }
 }
 
-void str_clear(char* s) {
+
+void str_clear(char* s)
+{
     StrHeader* hdr = str_get_hdr(s);
     hdr->len = 0;
     s[0] = '\0';
@@ -182,4 +161,50 @@ size_t str_rem(char* s)
 {
   StrHeader* hdr=str_get_hdr(s);
   return hdr->capacity-hdr->len;
+}
+
+size_t str_len(char* s)
+{
+  StrHeader* hdr=str_get_hdr(s);
+  return hdr->len;  
+}
+
+
+
+static inline StrHeader* str_get_hdr(char* s)
+{
+  if (!s) STR_FAIL(STR_ERR_NULL);
+  StrHeader* hdr=(StrHeader*)(s - STR_HEADER_SIZE);
+  if(hdr->capacity==0||
+     (long long)hdr->len<0 ||
+     (long long)hdr->capacity<0||
+     hdr->len>hdr->capacity)
+    STR_FAIL(STR_ERR_CORRUPT);   
+  return hdr;
+}
+
+
+static char* str_createv(Arena* arena, const char* fmt, va_list args)
+{
+    if (!fmt) {
+        return str_create(NULL, 0);
+    }
+    va_list args_copy;
+    va_copy(args_copy, args);
+    int needed = vsnprintf(NULL, 0, fmt, args_copy);
+    va_end(args_copy);
+    if (needed < 0) {
+        STR_FAIL_MSG("str_createv: encoding error during size check");
+    }
+    size_t length = (size_t)needed;
+    char* s;
+    if(arena)s=str_create_with_arena(arena, needed);
+    else s=str_create(NULL, length);
+    StrHeader* hdr = str_get_hdr(s);
+    size_t available = hdr->capacity;
+    int written = vsnprintf(s, available + 1, fmt, args);
+    if (written < 0 || (size_t)written > available) 
+        STR_FAIL_MSG("str_createv: format write failed unexpectedly");
+    hdr->len = (size_t)written;
+    return s;
 }

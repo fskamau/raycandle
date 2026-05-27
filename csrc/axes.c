@@ -4,7 +4,7 @@
 #include "figure.h"
 #include "artist.h"
 #include <math.h>
-#include "artist.h"
+#include "axes.h"
 
 #define YLABEL_STROKE_SIZE 5
 #define YLABEL_PADDING 10
@@ -12,33 +12,7 @@
 
 static void axes_set_ylabel_len(Axes* axes);
 static void axes_draw_ylabel(Axes* axes);
-
-void axes_draw(Axes* axes){
-  Vd vd=axes->fig->fc->vd;        
-  Rect area=*axes->area,clip;
-  area.w+=axes->ylabel.area.w;
-
-  {
-    DrawRectangleLines(NODE_RECT_UNWRAP(area),axes->fig->theme.fg);
-    area.x+=1;
-    area.y+=1;
-    area.w-=(2+axes->ylabel.area.w);
-    area.h-=2;
-  }
-  Artist* artist=axes->artist;
-  if(!artist)return;
-
-  clip=area;
-  area.x-=vd.offsetx*axes->w;
-  artist=axes->artist;
-  BeginScissorMode(NODE_RECT_UNWRAP(clip));
-  while(artist){
-    artist->avt->draw(artist,axes,area);
-    artist=artist->next;    
-  }
-  EndScissorMode();
-  axes_draw_ylabel(axes);
-}
+static void axes_draw_legend(Axes *axes);
 
 void axes_update_ylim(Axes* axes)
 {
@@ -172,3 +146,89 @@ static void axes_draw_ylabel(Axes* axes)
   DrawTextEx(font, buf, (Vector2){startx,mousey-half_font},theme.font_size,theme.font_spacing,RED);
 }
 
+void axes_draw(Axes* axes)
+{
+  Vd vd=axes->fig->fc->vd;        
+  Rect area=*axes->area,clip;
+  area.w+=axes->ylabel.area.w;
+
+  {
+    DrawRectangleLines(NODE_RECT_UNWRAP(area),axes->fig->theme.fg);
+    area.x+=1;
+    area.y+=1;
+    area.w-=(2+axes->ylabel.area.w);
+    area.h-=2;
+  }
+  Artist* artist=axes->artist;
+  if(!artist)return;
+
+  clip=area;
+  area.x-=vd.offsetx*axes->w;
+  artist=axes->artist;
+  BeginScissorMode(NODE_RECT_UNWRAP(clip));
+  while(artist){
+    artist->avt->draw(artist,axes,area);
+    artist=artist->next;    
+  }
+  EndScissorMode();
+  axes_draw_ylabel(axes);
+  axes_draw_legend(axes);
+}
+
+
+
+static void axes_draw_legend(Axes *axes)
+{
+    if (axes->legend.lp == LEGEND_POSITION_NO_LEGEND)return;
+    Theme theme=axes->fig->theme;
+    Font font=axes->fig->fc->font;
+    Rect area = *axes->area;
+    float startx = 0;
+    float starty = 0;
+    
+    float lw = LEGEND_GAP + LEGEND_ICON_LEN + LEGEND_GAP + axes->legend.llen+LEGEND_GAP;
+    float lh = axes->artist_len*(theme.font_size+LEGEND_GAP);
+
+    switch (axes->legend.lp) {
+    case LEGEND_POSITION_TOP_LEFT:
+        startx = area.x + LEGEND_GAP;
+        starty = area.y + LEGEND_GAP;
+        break;
+    case LEGEND_POSITION_TOP_RIGHT:
+        startx = area.x + area.w - lw - LEGEND_GAP;
+        starty = area.y + LEGEND_GAP;
+        break;
+    case LEGEND_POSITION_BOTTOM_LEFT:
+        startx = area.x + LEGEND_GAP;
+        starty = area.y + area.h - lh - LEGEND_GAP;
+        break;
+    case LEGEND_POSITION_BOTTOM_RIGHT:
+        startx = area.x + area.w - lw - LEGEND_GAP;
+        starty = area.y + area.h - lh - LEGEND_GAP;
+        break;
+    default:
+      ray_error("unknown legendposition\n");
+    }
+    DrawRectangleLines(startx,starty,lw,lh,Fade(theme.fg,0.2));
+    float current_x = startx + LEGEND_GAP;
+    float current_y = starty + LEGEND_GAP; 
+
+    Artist *artist = axes->artist;
+    while (artist) {
+        char *label = artist->label;
+        if (label) {
+            artist->avt->draw_icon(artist, axes, (Vector2){.x = current_x, .y = current_y});
+            Vector2 sx=(Vector2){current_x + LEGEND_ICON_LEN + LEGEND_GAP, current_y};
+            DrawTextEx(font, label,sx, theme.font_size, theme.font_spacing,theme.fg);           
+            current_y += theme.font_size + LEGEND_GAP;
+        }
+        artist = artist->next;
+    }
+}
+
+
+void axes_show_legend(Axes* axes, LegendPosition lp)
+{
+  ASSERT(axes);
+  axes->legend.lp=lp;
+}

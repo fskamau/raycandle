@@ -37,17 +37,19 @@ int main(){
 
   
 
-  artist_create(figure->axes+1,ARTIST_TYPE_LINE,1.0,&RED,&ldata);
+  artist_create(figure->axes+1,ARTIST_TYPE_LINE,1.0,&RED,NULL,&ldata);
 
   
   /* artist_create(figure->axes,ARTIST_TYPE_LINE,2.0,NULL,&ldata); */
     
-  artist_create(figure->axes,ARTIST_TYPE_CANDLE,1.0,(Color[2]){GetColor(0x079981ff),GetColor(0xf23645ff)},data+LEN);
+  artist_create(figure->axes,ARTIST_TYPE_CANDLE,1.0,(Color[2]){GetColor(0x079981ff),GetColor(0xf23645ff)},NULL,data+LEN);
 
-    artist_create(figure->axes+5,ARTIST_TYPE_CANDLE,1.0,(Color[2]){GetColor(0x079981ff),GetColor(0xf23645ff)},data+LEN);
+  Artist *x=artist_create(figure->axes+5,ARTIST_TYPE_CANDLE,1.0,(Color[2]){GetColor(0x079981ff),GetColor(0xf23645ff)},NULL,data+LEN);
+    /* x->is_limitable=0; */
   
   
-    artist_create(figure->axes+2,ARTIST_TYPE_CANDLE,1.0,(Color[2]){GetColor(0x079981ff),GetColor(0xf23645ff)},data+LEN);
+  artist_create(figure->axes+2,ARTIST_TYPE_CANDLE,1.0,(Color[2]){GetColor(0x079981ff),GetColor(0xf23645ff)},"dmkd",data+LEN);
+    artist_create(figure->axes+2,ARTIST_TYPE_CANDLE,1.0,(Color[2]){GetColor(0x079981ff),GetColor(0xf23645ff)},"mdkmfkdldmdlkdmkd",data+LEN);
 
   
     /* artist_create(figure->axes,ARTIST_TYPE_LINE,1.0,&RED,data); */
@@ -55,6 +57,7 @@ int main(){
     for(size_t i=0;i<6;++i)
       axes_set_yformatter(figure->axes+i, "%.2f");
   figure_show_cursors(figure);
+  figure_show_legends(figure, LEGEND_POSITION_BOTTOM_LEFT);
   figure_show(figure,"%f",720,1280,20);
  
   return 0;

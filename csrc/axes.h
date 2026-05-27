@@ -1,5 +1,9 @@
 #include "raylib.h"
 
+#define LEGEND_GAP     5
+#define LEGEND_ICON_LEN 15
+
+
 typedef struct Axes Axes;
 typedef struct Figure Figure;
 
