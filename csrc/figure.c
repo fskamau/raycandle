@@ -428,12 +428,12 @@ static void  figure_draw_cursors(Figure *figure)
   if(!aum||!aum->artist_len)return;
   Rect area=*aum->area;
   double mreal=scale_to_limitf(mp.y, (Limit){area.y,area.y+area.h},aum->lim);
-  float px=mp.x/area.w;
+  float px=scale_to_limitf(mp.x, (Limit){area.x,area.x+area.w},(Limit){0.f,1.f});
   Color c=Fade(theme.fg,0.5);
   for(size_t i=0;i<figure->fc->axes_count;++i){
     Axes axes=figure->axes[i];
-    Rect areax=*axes.area;
     if(!axes.artist_len)continue;
+    Rect areax=*axes.area;
     float pixely=scale_to_limitf(mreal,axes.lim,(Limit){areax.y,areax.y+areax.h});
     int pxv=px*areax.w+areax.x;
     DrawLine(pxv,areax.y,pxv,areax.y+areax.h,c);

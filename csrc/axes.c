@@ -220,8 +220,8 @@ static void axes_draw_legend(Axes *axes)
             artist->avt->draw_icon(artist, axes, (Vector2){.x = current_x, .y = current_y});
             Vector2 sx=(Vector2){current_x + LEGEND_ICON_LEN + LEGEND_GAP, current_y};
             DrawTextEx(font, label,sx, theme.font_size, theme.font_spacing,theme.fg);           
-            current_y += theme.font_size + LEGEND_GAP;
         }
+        current_y += theme.font_size + LEGEND_GAP;
         artist = artist->next;
     }
 }

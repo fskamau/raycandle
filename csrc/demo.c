@@ -49,6 +49,7 @@ int main(){
   
   
   artist_create(figure->axes+2,ARTIST_TYPE_CANDLE,1.0,(Color[2]){GetColor(0x079981ff),GetColor(0xf23645ff)},"dmkd",data+LEN);
+      artist_create(figure->axes+2,ARTIST_TYPE_CANDLE,1.0,(Color[2]){GetColor(0x079981ff),GetColor(0xf23645ff)},NULL,data+LEN);
     artist_create(figure->axes+2,ARTIST_TYPE_CANDLE,1.0,(Color[2]){GetColor(0x079981ff),GetColor(0xf23645ff)},"mdkmfkdldmdlkdmkd",data+LEN);
 
   
