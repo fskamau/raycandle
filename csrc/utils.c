@@ -69,7 +69,7 @@ Limit get_lim(const double *data, size_t len)
 
 Color axes_get_next_tableau_t10_color(Axes *axes)
 {
-  ASSERT(axes->tableau_t10_index >= 0 && axes->tableau_t10_index < 10);
+  ASSERT(axes->tableau_t10_index < 10);
   Color color = tableau_colors[(axes->tableau_t10_index++)];
   axes->tableau_t10_index %= 10;
   return color;

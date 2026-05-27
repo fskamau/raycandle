@@ -1,32 +1,42 @@
-CC=gcc
-CFLAGS=-Wextra -Wall -O0 -fPIC  -std=c99 -ggdb $(shell pkg-config --cflags raylib)
-LDFLAGS=$(shell pkg-config --libs raylib)
-TARGET_FOLDER=./build
-SOURCES=utils.c str.c figure.c  node.c axes.c ready_signal.c artist.c
-OBJECTS=$(patsubst %.c,$(TARGET_FOLDER)/%.o, $(SOURCES))
+CC = gcc
+CFLAGS = -Wextra -Wall -O2 -fPIC -std=c99 -ggdb $(shell pkg-config --cflags raylib 2>/dev/null || echo "-I/usr/local/include")
+LDFLAGS = $(shell pkg-config --libs raylib 2>/dev/null || echo "-L/usr/local/lib -lraylib") -lm -lpthread -lX11
 
-all: raycandle.so  mv
+TARGET_FOLDER = ./build
+PY_PKG_FOLDER = ../raycandle
+ASSETS_FOLDER = ./assets
+
+SOURCES = utils.c str.c figure.c node.c axes.c ready_signal.c artist.c
+OBJECTS = $(patsubst %.c,$(TARGET_FOLDER)/%.o, $(SOURCES))
+
+all: $(TARGET_FOLDER)/libraycandle.so.1
 
 $(TARGET_FOLDER):
 	mkdir -p $(TARGET_FOLDER)
 
 $(TARGET_FOLDER)/%.o: %.c | $(TARGET_FOLDER)
-	$(CC) $(CFLAGS)  -c -o $@  $<
+	$(CC) $(CFLAGS) -c -o $@ $<
 
-raycandle.so:$(OBJECTS)
-	$(CC)  -shared -o $(TARGET_FOLDER)/libraycandle.so.1  -Wl,-soname,libraycandle.so $(OBJECTS) $(LDFLAGS)
+$(TARGET_FOLDER)/libraycandle.so.1: $(OBJECTS)
+	$(CC) -shared -o $@ -Wl,-soname,libraycandle.so.1 $(OBJECTS) $(LDFLAGS)
 
-# raycandle_for_cffi.h:raycandle.so
-# 	python -c "import re;lines=open('raycandle.h').readlines();\
-# 	print(''.join([line for line in lines if  not re.search(r'^\S*?#',line)]))"\
-# 	| gcc  -E -C -o $(TARGET_FOLDER)/raycandle_for_cffi.h -
+cffi: $(TARGET_FOLDER)/raycandle.h
+
+$(TARGET_FOLDER)/raycandle.h: $(TARGET_FOLDER)
+	python3 -c "import re; lines=open('raycandle.h').readlines(); print(''.join([line for line in lines if not re.search(r'^\s*#', line)]))" \
+	| $(CC) -E -C -P -o $@ -
+
+install: all cffi
+	@if [ ! -d "$(PY_PKG_FOLDER)" ]; then \
+		echo "ERROR: '$(PY_PKG_FOLDER)' does not exist" >&2; \
+		exit 1; \
+	fi
+	rm $(TARGET_FOLDER)/*.o
+	cp -r $(TARGET_FOLDER)/* $(PY_PKG_FOLDER)/
+	cp -r $(TARGET_FOLDER)/libraycandle.so.1 $(PY_PKG_FOLDER)/libraycandle.so
+	cp -r $(TARGET_FOLDER)/raycandle.h $(PY_PKG_FOLDER)/
 
 clean:
-	rm $(TARGET_FOLDER)/*.o
-mv:
-	cp build/* ../
+	rm -rf $(TARGET_FOLDER)
 
-
-
-
-
+.PHONY: all cffi install clean

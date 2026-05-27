@@ -1,10 +1,19 @@
 #ifndef __RAYCANDLE_H__
 #define __RAYCANDLE_H__
 
-/* #include "axes.h" */
-/* #include "artist.h" */
 #include "node.h"
 #include "raylib.h"
+
+/*cffi types
+
+ */
+#ifndef __NODE_H__
+typedef struct {
+  float x,y,w,h;
+}Rect;
+
+#endif
+
 
 typedef char*  Str;
 typedef enum {
@@ -35,13 +44,12 @@ typedef struct {
 
 
 typedef struct Artist Artist;
-typedef enum ArtistType ArtistType;
 typedef struct ArtistVTable ArtistVTable;
 
-enum  ArtistType  {
+typedef enum   {
   ARTIST_TYPE_LINE = 0,
   ARTIST_TYPE_CANDLE = 1,
-};
+}ArtistType;
 
 /*
   if is_splined then data len is that set by figure_set_view_data
@@ -50,8 +58,8 @@ enum  ArtistType  {
     else normal limits will be applied
  */
 typedef struct {
-  bool is_splined;
-  bool is_relative;
+  int is_splined;
+  int is_relative;
   double* data;
 }LineData;
 
@@ -83,7 +91,7 @@ struct Axes{
   RColor facecolor;
   Limit lim;
   Str title;
-  uint8_t tableau_t10_index;
+  size_t tableau_t10_index;
   Label ylabel;
 };
 
@@ -99,6 +107,8 @@ struct Theme{
 
 typedef struct Fconfig Fconfig;
 typedef struct Figure Figure;
+typedef struct Arena Arena;
+typedef struct NC NC;
 struct Figure {
   Arena* arena;
   char* title;
@@ -116,7 +126,7 @@ Limit get_lim(const double *data, size_t len);
 
 
 //artist
-Artist* artist_create(Axes *axes, ArtistType atype, float thick, Color* colors, const char* label ,void *data);
+Artist* artist_create(Axes *axes, ArtistType atype, float thick, RColor* colors, const char* label ,void *data);
 
 //axes
 void axes_show_legend(Axes* axes, LegendPosition lp);

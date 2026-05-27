@@ -8,7 +8,7 @@
 #include "axes.h"
 
 typedef struct Artist Artist;
-typedef enum ArtistType ArtistType;
+
 static void  artist_candle_init(Artist* artist,Axes* axes); //artist->data is double *o,*h,*l,*c
 static void  artist_line_init(Artist* artist,Axes* axes);
 static Artist*   get_last_artist(Artist* artist);

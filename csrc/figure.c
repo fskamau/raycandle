@@ -69,7 +69,6 @@ Figure* figure_create(size_t rows, size_t cols)
     nc_grid(fc->nc, fc->nc->root, rows,cols);
   figure->fc->axes_count=nc_compile(fc->nc);
   figure_compile(figure); //nodes & axes
-
   return figure;
 }
 
@@ -108,6 +107,11 @@ void raylib_init(Figure *figure,char *window_title,int width, int height, int fp
   ready_signal_set(figure->fc->signal_initialized);
 }
 
+void figure_wait_for_InitWindow(Figure* figure)
+{
+  ready_signal_wait(figure->fc->signal_initialized);
+}
+
 
 void raylib_init_loop(Figure* figure)
 {
@@ -122,7 +126,6 @@ void raylib_init_loop(Figure* figure)
   }
   // Q -> exit
   SetExitKey(KEY_Q);
-
   if(IsWindowResized())figure->force_update=1;
 
 }

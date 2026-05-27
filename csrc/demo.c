@@ -23,7 +23,7 @@ int main(){
   figure_set_view_data(figure,LEN,"%a/%d/%m %H:%M:%S",data,60);
   Theme theme=figure->theme;
   /* theme.font_size=32; */
-  theme.font_path= "/home/ve/Downloads/home/raycandle1/.raycandle/raycandle/fonts/iosevka-regular.ttf";
+  theme.font_path= "/home/ve/Downloads/home/raycandle/csrc/assets/font.ttf";
   figure_set_theme(figure, theme);
   
 
