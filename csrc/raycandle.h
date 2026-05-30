@@ -130,8 +130,8 @@ Limit get_lim(const double *data, size_t len);
 
 //artist
 Artist* artist_create(Axes *axes, ArtistType atype, float thick, RColor* colors, const char* label ,void *data);
-void artist_line_set_data(Artist* artist,  double*data, size_t start, size_t len);
-void artist_candle_set_data(Artist* artist, double*data, size_t start, size_t len);
+void artist_line_set_data(Artist* artist,  double*data, size_t start, size_t len); //copy `data` of len `len` to &internal_buffer[`start`]
+void artist_candle_set_data(Artist* artist, double*data, size_t start, size_t len);//copy `data` of len `len` to &internal_buffer[`start`]
 
 //axes
 void axes_show_legend(Axes* axes, LegendPosition lp);
