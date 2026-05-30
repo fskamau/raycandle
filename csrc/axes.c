@@ -142,7 +142,7 @@ static void axes_draw_ylabel(Axes* axes)
   double value=scale_to_limitf(mousey,srcl,axes->lim);
   str_clear(buf);
   str_append(buf,axes->ylabel.format,value);
-  DrawLine(area.x,mousey,area.x+YLABEL_STROKE_SIZE+5,mousey,theme.fg);
+  DrawLine(area.x,mousey,area.x+YLABEL_STROKE_SIZE,mousey,RED);
   DrawTextEx(font, buf, (Vector2){startx,mousey-half_font},theme.font_size,theme.font_spacing,RED);
 }
 

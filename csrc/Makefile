@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wextra -Wall -O0 -fPIC -std=c99 -ggdb $(shell pkg-config --cflags raylib 2>/dev/null || echo "-I/usr/local/include")
+CFLAGS = -Wextra -Wall -O3 -fPIC -std=c99 -ggdb $(shell pkg-config --cflags raylib 2>/dev/null || echo "-I/usr/local/include")
 LDFLAGS = $(shell pkg-config --libs raylib 2>/dev/null || echo "-L/usr/local/lib -lraylib") -lm -lpthread -lX11
 
 TARGET_FOLDER = ./build

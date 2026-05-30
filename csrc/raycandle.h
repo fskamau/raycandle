@@ -149,8 +149,7 @@ void figure_set_window_title(Figure* figure, char *wtitle);
 void figure_set_view_data(Figure* figure, size_t len, char *xformat, double *xdata, size_t timeframe); //set view data
 void figure_show(Figure* figure, char* window_title, int width, int height, int fps); //run the disp loop until the window is closed. for more control look at figure.h use the function below
 
-void figure_update_xdata(Figure* figure, double* xdata, size_t timeframe);//update the xdata with new data
-void figure_update_xdatar(Figure* figure, double* xdata, size_t timeframe, size_t start, size_t stop);//update the xdata with new data with a range
+void figure_update_xdata(Figure* figure, double* xdata, size_t timeframe, size_t start, size_t len); //update the xdata+start len len with new xdata of len len
 
 void figure_show_cursors(Figure* figure);
 void figure_show_legends(Figure* figure, LegendPosition lp);

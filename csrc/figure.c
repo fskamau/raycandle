@@ -36,7 +36,6 @@
 static void  figure_compile(Figure* figure);
 static void   figure_create_axes(Figure *figure);
 static void load_font(Figure* figure);
-static void update_xdata(Figure* figure, double* xdata, size_t timeframe, size_t start, size_t stop);
 static void figure_update_xlim(Figure* figure);
 
 static void insert_bar(bool top, Rect* src, Rect* dest, size_t height, float spacing);
@@ -206,15 +205,17 @@ void figure_set_view_data(Figure* figure, size_t len, char *xformat, double *xda
   }
 }
 
-void figure_update_xdata(Figure* figure, double* xdata, size_t timeframe)
+void figure_update_xdata(Figure* figure, double* xdata, size_t timeframe, size_t start, size_t len)
 {
-  update_xdata(figure, xdata, timeframe,0,figure->fc->vd.len);
-}
-
-
-void figure_update_xdatar(Figure* figure, double* xdata,size_t timeframe, size_t start, size_t stop)
-{
-  update_xdata(figure, xdata,timeframe, start,stop);
+  ASSERT(figure);
+  ASSERT(xdata);
+  ASSERT(timeframe>0);
+  ASSERT(len>0);
+  ASSERTM(figure->fc->vd.len,"call figure_set_view_data first\n");
+  Fconfig* fc=figure->fc;
+  ASSERTM(start+len<=fc->vd.len,"xdata index error; would overflow\n");
+  memcpy(fc->xdata+start,xdata,sizeof(*fc->xdata)*len);
+  fc->timeframe=timeframe;
 }
 
 
@@ -269,20 +270,6 @@ static void load_font(Figure* figure)
     }
     str_free(fc->font_path);
   }
-}
-
-static void update_xdata(Figure* figure, double* xdata, size_t timeframe, size_t start, size_t stop)
-{
-  ASSERT(figure);
-  ASSERT(xdata);
-  ASSERT(timeframe>0);
-  ASSERTM(figure->fc->vd.len,"call figure_set_view_data first\n");
-  Fconfig* fc=figure->fc;
-  ASSERTM(start<stop,"xdata index error\n");
-  ASSERTM(stop<=fc->vd.len,"xdata index error\n");
-  memcpy(fc->xdata+start,xdata,sizeof(*fc->xdata)*(stop-start));
-  fc->timeframe=timeframe;
-  
 }
 
 static void figure_update_xlim(Figure* figure)

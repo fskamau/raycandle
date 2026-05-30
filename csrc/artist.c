@@ -101,6 +101,7 @@ static void  artist_line_init(Artist* artist)
 void artist_line_set_data(Artist* artist,  double*data, size_t start, size_t len)
 {
   ASSERT(artist && data);
+  ASSERT(len>0);
   Fconfig *fc=artist->axes->fig->fc;
   size_t vd_len=fc->vd.len;
   LineData* ldata=artist->data;
@@ -115,6 +116,7 @@ void artist_line_set_data(Artist* artist,  double*data, size_t start, size_t len
 void artist_candle_set_data(Artist* artist, double*data, size_t start, size_t len)
 {
   ASSERT(artist && data);
+  ASSERT(len>0);
   Fconfig *fc=artist->axes->fig->fc;
   size_t vd_len=fc->vd.len;
   double *dest=artist->data;
@@ -188,7 +190,7 @@ static void  artist_line_draw(Artist* artist, Rect area)
       DrawLineEx((Vector2){axes->w*(rc-1)+area.x,scale_to_limitf(data[i-1],axes->lim,destl)},
                  (Vector2){axes->w*rc+area.x,scale_to_limitf(data[i],axes->lim,destl)},artist->thick,*artist->colors);
     }
-  }else{
+  }else{   
     double x[2]={0};
     double y[2]={0};
     Limit ylim=(ldata->is_relative)?(Limit){0.f,1.f}:axes->lim;
