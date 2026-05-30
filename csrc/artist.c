@@ -9,17 +9,18 @@
 
 typedef struct Artist Artist;
 
-static void  artist_candle_init(Artist* artist,Axes* axes); //artist->data is double *o,*h,*l,*c
-static void  artist_line_init(Artist* artist,Axes* axes);
+static void  artist_candle_init(Artist* artist); //artist->data is double *o,*h,*l,*c
+static void  artist_line_init(Artist* artist);
 static Artist*   get_last_artist(Artist* artist);
-static Limit artist_line_get_limit(Artist* artist, Axes* axes);
-static Limit artist_candle_get_limit(Artist* artist, Axes* axes);
+static Limit artist_line_get_limit(Artist* artist);
+static Limit artist_candle_get_limit(Artist* artist);
 
-static void  artist_candle_draw(Artist* artist,Axes* axes,Rect area);
-static void  artist_line_draw(Artist* artist,Axes* axes,Rect area);
+static void  artist_candle_draw(Artist* artist, Rect area);
+static void  artist_line_draw(Artist* artist, Rect area);
 
-static void artist_candle_draw_icon(Artist* artist, Axes* axes, Vector2 start_pos);
-static void artist_line_draw_icon(Artist* artist, Axes* axes, Vector2 start_pos);
+static void artist_candle_draw_icon(Artist* artist, Vector2 start_pos);
+static void artist_line_draw_icon(Artist* artist, Vector2 start_pos);
+
 
 #define CREATE_AVT(n) static ArtistVTable n##ATV=(ArtistVTable){    \
     .init=artist_##n##_init,                                        \
@@ -47,6 +48,7 @@ Artist* artist_create(Axes *axes, ArtistType atype, float thick, Color* colors, 
   artist->data=data;  
   artist->is_limitable=true;
   artist->colors=colors;
+  artist->axes=axes;
   if(label){
       artist->label=str_createf_with_arena(axes->fig->arena, "%s", label);
       size_t x=str_len(artist->label);
@@ -54,11 +56,11 @@ Artist* artist_create(Axes *axes, ArtistType atype, float thick, Color* colors, 
     }
   switch(atype){
   case ARTIST_TYPE_LINE:
-    artist_line_init(artist, axes);
+    artist_line_init(artist);
     artist->avt=&lineATV;
     break;
   case ARTIST_TYPE_CANDLE:
-    artist_candle_init(artist,axes);
+    artist_candle_init(artist);
     artist->avt=&candleATV;
     break;
   default:
@@ -72,8 +74,9 @@ Artist* artist_create(Axes *axes, ArtistType atype, float thick, Color* colors, 
   return artist;
 }
 
-static void  artist_line_init(Artist* artist, Axes* axes)
+static void  artist_line_init(Artist* artist)
 {
+  Axes* axes=artist->axes;
   ASSERT(artist->data);
   LineData *ldata=artist->data;
   size_t len=axes->fig->fc->vd.len;
@@ -95,9 +98,36 @@ static void  artist_line_init(Artist* artist, Axes* axes)
 }
 
 
-static void  artist_candle_init(Artist* artist, Axes* axes)
+void artist_line_set_data(Artist* artist,  double*data, size_t start, size_t len)
+{
+  ASSERT(artist && data);
+  Fconfig *fc=artist->axes->fig->fc;
+  size_t vd_len=fc->vd.len;
+  LineData* ldata=artist->data;
+  ASSERTM(vd_len,"invalid state; create at least 1 artist with segmented data\n");
+  if(ldata->is_splined)
+    {ASSERTM(start+len<=vd_len, "slicing error\n");}
+  else
+    {ASSERTM(len==4, "non splined lines data len is always 4\n");}
+  memcpy(ldata->data+start,data, sizeof(*ldata->data)*len);  
+}
+
+void artist_candle_set_data(Artist* artist, double*data, size_t start, size_t len)
+{
+  ASSERT(artist && data);
+  Fconfig *fc=artist->axes->fig->fc;
+  size_t vd_len=fc->vd.len;
+  double *dest=artist->data;
+  ASSERTM(vd_len,"invalid state; create at least 1 artist with segmented data\n");
+  ASSERTM(start+len<=vd_len, "slicing index error\n");
+  for(size_t i=0;i<4;++i)
+    memcpy(dest+vd_len*i+start,data+len*i,sizeof(*dest)*len);  
+}
+
+static void  artist_candle_init(Artist* artist)
 {
   assert(artist->data);
+  Axes* axes=artist->axes;
   size_t len=axes->fig->fc->vd.len;
   Arena* arena=axes->fig->arena;
   size_t ta=sizeof(double)*len*4;
@@ -122,17 +152,17 @@ static Artist* get_last_artist(Artist* artist)
 }
 
 
-static Limit artist_line_get_limit(Artist* artist, Axes* axes)
+static Limit artist_line_get_limit(Artist* artist)
 {
-  (void)axes;
-  Vd vd=axes->fig->fc->vd;
+  Vd vd=artist->axes->fig->fc->vd;
   LineData *l=artist->data;
   if(l->is_splined)  return get_lim(l->data+vd.start,vd.stop-vd.start);
   if(l->is_relative)return (Limit){.min=NAN,.max=NAN};
   else return get_lim(l->data+2,2);
 }
 
-static Limit artist_candle_get_limit(Artist* artist, Axes* axes){
+static Limit artist_candle_get_limit(Artist* artist){
+  Axes* axes=artist->axes;
   Vd vd=axes->fig->fc->vd;
   size_t len=axes->fig->fc->vd.len;
   double *data=artist->data;
@@ -145,8 +175,9 @@ static Limit artist_candle_get_limit(Artist* artist, Axes* axes){
 
 
 
-static void  artist_line_draw(Artist* artist, Axes* axes, Rect area)
+static void  artist_line_draw(Artist* artist, Rect area)
 {
+  Axes* axes=artist->axes;
   Vd vd=axes->fig->fc->vd;
   LineData *ldata=artist->data;
   double *data=ldata->data;
@@ -168,8 +199,9 @@ static void  artist_line_draw(Artist* artist, Axes* axes, Rect area)
   }
 }
 
-static void  artist_candle_draw(Artist* artist, Axes* axes, Rect area)
+static void  artist_candle_draw(Artist* artist, Rect area)
 {
+  Axes* axes=artist->axes;
   Vd vd=axes->fig->fc->vd;
   double *data=artist->data;
   float w_use_ratio=0.6;
@@ -196,19 +228,15 @@ static void  artist_candle_draw(Artist* artist, Axes* axes, Rect area)
 }
 
 
-static void artist_line_draw_icon(Artist* artist, Axes* axes, Vector2 start_pos)
+static void artist_line_draw_icon(Artist* artist, Vector2 start_pos)
 {
-  Theme theme=axes->fig->theme;
-  start_pos.y +=
-    theme.font_size / 2.f; // draw a line middle as icon
-  DrawLineEx(start_pos, (Vector2){start_pos.x + LEGEND_ICON_LEN, start_pos.y},
-             1, *artist->colors);
+  Theme theme=artist->axes->fig->theme;
+  start_pos.y +=theme.font_size ; // draw a line middle as icon
+  DrawLineEx(start_pos, (Vector2){start_pos.x + LEGEND_ICON_LEN, start_pos.y}, 1, *artist->colors);
 }
 
-static void artist_candle_draw_icon(Artist* artist, Axes* axes, Vector2 start_pos)
-{  Theme theme=axes->fig->theme;
-  int y = theme.font_size / 3; // draw a half rect as icon
-  DrawRectangleLines(start_pos.x, start_pos.y + y, LEGEND_ICON_LEN,
-                     theme.font_size - y * 2,
-                     *artist->colors);
+static void artist_candle_draw_icon(Artist* artist, Vector2 start_pos)
+{  Theme theme=artist->axes->fig->theme;
+  int y = theme.font_size / 3;
+  DrawRectangleLines(start_pos.x, start_pos.y + y, LEGEND_ICON_LEN,theme.font_size - y * 2,*artist->colors);
 }

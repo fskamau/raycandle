@@ -23,7 +23,7 @@ void axes_update_ylim(Axes* axes)
   ASSERT(vd.vlen!=0); 
   
   while(artist&&artist->is_limitable){
-    Limit tlim=artist->avt->get_limit(artist,axes);
+    Limit tlim=artist->avt->get_limit(artist);
     if (!isnan(tlim.min)) {
       if (isnan(lim.min)) {
         lim.min = tlim.min;
@@ -167,7 +167,7 @@ void axes_draw(Axes* axes)
   artist=axes->artist;
   BeginScissorMode(NODE_RECT_UNWRAP(clip));
   while(artist){
-    artist->avt->draw(artist,axes,area);
+    artist->avt->draw(artist,area);
     artist=artist->next;    
   }
   EndScissorMode();
@@ -217,7 +217,7 @@ static void axes_draw_legend(Axes *axes)
     while (artist) {
         char *label = artist->label;
         if (label) {
-            artist->avt->draw_icon(artist, axes, (Vector2){.x = current_x, .y = current_y});
+            artist->avt->draw_icon(artist,  (Vector2){.x = current_x, .y = current_y});
             Vector2 sx=(Vector2){current_x + LEGEND_ICON_LEN + LEGEND_GAP, current_y};
             DrawTextEx(font, label,sx, theme.font_size, theme.font_spacing,theme.fg);           
         }
