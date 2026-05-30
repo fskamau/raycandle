@@ -55,7 +55,7 @@ void axes_update_ylim(Axes* axes)
 
 Axes* get_axes_under_mouse(Figure* figure)
 {
-  for(size_t i=0;i<figure->fc ->axes_count;++i){
+  for(size_t i=0;i<figure->axes_count;++i){
     if(CheckCollisionPointRec(GetMousePosition(),NODE_RECT2RECTANGLE(figure->fc->rects[i])))
       return figure->axes+i;
   }
@@ -123,7 +123,7 @@ static void axes_draw_ylabel(Axes* axes)
 #define LEN 128
   char buf_[LEN]={0};
   char* buf=str_create(buf_, LEN);
-  Limit srcl=(Limit){axes->area->y,axes->area->y+axes->area->h};
+  Limit srcl=(Limit){axes->area->y+axes->area->h,axes->area->y};
   float startx=area.x+YLABEL_STROKE_SIZE+YLABEL_GAP;
   
   for(size_t i=0;i<label_count;++i){

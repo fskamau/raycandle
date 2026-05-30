@@ -45,7 +45,6 @@ struct Fconfig {
   Font font;
   FigureState state;
   bool update;
-  size_t axes_count;
   Rect* rects;
   Vd vd;
   double* xdata;

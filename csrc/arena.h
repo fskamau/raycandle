@@ -50,7 +50,7 @@ void *arena_alloc(Arena *arena, size_t bytes) {
   return ptr;
  arena_alloc_error:{
     size_t rem=arena->cap-aligned_offset;
-    ARENA_ERROR("arena_alloc: Out of memory: needs %zu more; (req %zu cap (%zubytes ~= %.4fMb) free %zu)\n",bytes-rem,bytes,arena->cap,(double)arena->cap/(1024*1024*1024), rem);
+    ARENA_ERROR("arena_alloc: Out of memory: needs %'zub more; (req %'zu cap (%'zub ~= %'.4fMb) free %'zu)\n",bytes-rem,bytes,arena->cap,(double)arena->cap/(1024*1024*1024), rem);
   }
 }
 

@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wextra -Wall -O2 -fPIC -std=c99 -ggdb $(shell pkg-config --cflags raylib 2>/dev/null || echo "-I/usr/local/include")
+CFLAGS = -Wextra -Wall -O0 -fPIC -std=c99 -ggdb $(shell pkg-config --cflags raylib 2>/dev/null || echo "-I/usr/local/include")
 LDFLAGS = $(shell pkg-config --libs raylib 2>/dev/null || echo "-L/usr/local/lib -lraylib") -lm -lpthread -lX11
 
 TARGET_FOLDER = ./build
@@ -31,10 +31,9 @@ install: all cffi
 		echo "ERROR: '$(PY_PKG_FOLDER)' does not exist" >&2; \
 		exit 1; \
 	fi
-	rm $(TARGET_FOLDER)/*.o
-	cp -r $(TARGET_FOLDER)/* $(PY_PKG_FOLDER)/
 	cp -r $(TARGET_FOLDER)/libraycandle.so.1 $(PY_PKG_FOLDER)/libraycandle.so
 	cp -r $(TARGET_FOLDER)/raycandle.h $(PY_PKG_FOLDER)/
+	cp -r $(ASSETS_FOLDER) $(PY_PKG_FOLDER)/
 
 clean:
 	rm -rf $(TARGET_FOLDER)

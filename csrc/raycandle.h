@@ -109,6 +109,7 @@ typedef struct Fconfig Fconfig;
 typedef struct Figure Figure;
 typedef struct Arena Arena;
 typedef struct NC NC;
+
 struct Figure {
   Arena* arena;
   char* title;
@@ -117,6 +118,7 @@ struct Figure {
   Fconfig* fc;
   Axes* axes;
   Limit xlim;
+  size_t axes_count;
 };
 
 double scale_to_limitf(double val, Limit src, Limit dest);
@@ -130,10 +132,12 @@ Artist* artist_create(Axes *axes, ArtistType atype, float thick, RColor* colors,
 
 //axes
 void axes_show_legend(Axes* axes, LegendPosition lp);
+void axes_set_yformatter(Axes* axes,char* format);
 
 //figure
 Figure* figure_create(size_t rows, size_t cols);
 Figure *figure_createn(NC* nc); // manually set the nodes. it will call nc_compile(nc)
+void figure_wait_for_InitWindow(Figure* figure);
 
 void figure_set_theme(Figure* figure, Theme theme);
 
@@ -142,8 +146,8 @@ void figure_set_window_title(Figure* figure, char *wtitle);
 void figure_set_view_data(Figure* figure, size_t len, char *xformat, double *xdata, size_t timeframe); //set view data
 void figure_show(Figure* figure, char* window_title, int width, int height, int fps); //run the disp loop until the window is closed. for more control look at figure.h use the function below
 
-void figure_update_xdata(Figure* figure, double* xdata);//update the xdata with new data
-void figure_update_xdatar(Figure* figure, double* xdata,size_t start, size_t stop);//update the xdata with new data with a range
+void figure_update_xdata(Figure* figure, double* xdata, size_t timeframe);//update the xdata with new data
+void figure_update_xdatar(Figure* figure, double* xdata, size_t timeframe, size_t start, size_t stop);//update the xdata with new data with a range
 
 void figure_show_cursors(Figure* figure);
 void figure_show_legends(Figure* figure, LegendPosition lp);
