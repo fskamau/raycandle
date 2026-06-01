@@ -5,7 +5,6 @@
 #include "raylib.h"
 
 /*cffi types
-
  */
 #ifndef __NODE_H__
 typedef struct {

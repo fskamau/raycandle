@@ -52,7 +52,7 @@ int main(){
       artist_create(figure->axes+2,ARTIST_TYPE_CANDLE,1.0,(Color[2]){GetColor(0x079981ff),GetColor(0xf23645ff)},NULL,data+LEN);
     artist_create(figure->axes+2,ARTIST_TYPE_CANDLE,1.0,(Color[2]){GetColor(0x079981ff),GetColor(0xf23645ff)},"mdkmfkdldmdlkdmkd",data+LEN);
 
-  
+    figure_set_title("mksd:");  
     /* artist_create(figure->axes,ARTIST_TYPE_LINE,1.0,&RED,data); */
     /*   artist_create(figure->axes,ARTIST_TYPE_LINE,1.0,&RED,data); */
     for(size_t i=0;i<6;++i)

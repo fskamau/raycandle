@@ -84,6 +84,7 @@ static void  artist_line_init(Artist* artist)
   assert(ldata->data);
   if(ldata->is_splined)ASSERT(!ldata->is_relative && "invalid line state\n");
   if(ldata->is_relative){for(size_t i=0;i<4;++i)ASSERTM(ldata->data[i]>=0.f&&ldata->data[i]<=1.f,"range of relative line data is(0.f,1.0f)\n")};
+  if(!ldata->is_splined)artist->is_limitable=false;
   LineData* pdata=arena_alloc(arena, sizeof(LineData));
   pdata->is_relative=ldata->is_relative;
   pdata->is_splined=ldata->is_splined;
@@ -110,7 +111,8 @@ void artist_line_set_data(Artist* artist,  double*data, size_t start, size_t len
     {ASSERTM(start+len<=vd_len, "slicing error\n");}
   else
     {ASSERTM(len==4, "non splined lines data len is always 4\n");}
-  memcpy(ldata->data+start,data, sizeof(*ldata->data)*len);  
+  memcpy(ldata->data+start,data, sizeof(*ldata->data)*len);
+  artist->axes->fig->force_update=true;
 }
 
 void artist_candle_set_data(Artist* artist, double*data, size_t start, size_t len)
@@ -123,7 +125,8 @@ void artist_candle_set_data(Artist* artist, double*data, size_t start, size_t le
   ASSERTM(vd_len,"invalid state; create at least 1 artist with segmented data\n");
   ASSERTM(start+len<=vd_len, "slicing index error\n");
   for(size_t i=0;i<4;++i)
-    memcpy(dest+vd_len*i+start,data+len*i,sizeof(*dest)*len);  
+    memcpy(dest+vd_len*i+start,data+len*i,sizeof(*dest)*len);
+  artist->axes->fig->force_update=true;
 }
 
 static void  artist_candle_init(Artist* artist)
@@ -159,7 +162,7 @@ static Limit artist_line_get_limit(Artist* artist)
   Vd vd=artist->axes->fig->fc->vd;
   LineData *l=artist->data;
   if(l->is_splined)  return get_lim(l->data+vd.start,vd.stop-vd.start);
-  if(l->is_relative)return (Limit){.min=NAN,.max=NAN};
+  if(l->is_relative) return (Limit){.min=NAN,.max=NAN};
   else return get_lim(l->data+2,2);
 }
 
@@ -184,8 +187,8 @@ static void  artist_line_draw(Artist* artist, Rect area)
   LineData *ldata=artist->data;
   double *data=ldata->data;
   Limit destl=(Limit){.max=area.y,.min=area.h+area.y};
-  size_t rc=1;
   if(ldata->is_splined){
+    size_t rc=1;
     for(size_t i=vd.start+1;i<vd.stop;++i,rc++){
       DrawLineEx((Vector2){axes->w*(rc-1)+area.x,scale_to_limitf(data[i-1],axes->lim,destl)},
                  (Vector2){axes->w*rc+area.x,scale_to_limitf(data[i],axes->lim,destl)},artist->thick,*artist->colors);

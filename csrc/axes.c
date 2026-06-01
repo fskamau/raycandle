@@ -16,12 +16,13 @@ static void axes_draw_legend(Axes *axes);
 
 void axes_update_ylim(Axes* axes)
 {
+
   Artist* artist=axes->artist;
   if(!artist)return;
   Limit lim=(Limit){NAN,NAN};
   Vd vd=axes->fig->fc->vd;        
+
   ASSERT(vd.vlen!=0); 
-  
   while(artist&&artist->is_limitable){
     Limit tlim=artist->avt->get_limit(artist);
     if (!isnan(tlim.min)) {
@@ -89,7 +90,7 @@ static void axes_set_ylabel_len(Axes* axes)
   area->y=axes->area->y;
   area->h=axes->area->h;
   
-  axes->area->w-=area->w;
+  /* axes->area->w-=area->w; */
 }
 
 void axes_set_yformatter(Axes* axes,char* format)
@@ -129,7 +130,7 @@ static void axes_draw_ylabel(Axes* axes)
   for(size_t i=0;i<label_count;++i){
     float y=area.y+i*(YLABEL_PADDING+theme.font_size)+YLABEL_PADDING;
     int diffm=mousey-y;
-    if(aum && diffm >0&& diffm<theme.font_size+half_font)continue;
+    if(aum && diffm>0 && diffm<theme.font_size+half_font)continue;
     DrawLine(area.x,y+half_font,area.x+YLABEL_STROKE_SIZE,y+half_font,Fade(theme.fg,0.8));
     double value=scale_to_limitf(y+half_font,srcl,axes->lim);
     str_clear(buf);
@@ -148,10 +149,8 @@ static void axes_draw_ylabel(Axes* axes)
 
 void axes_draw(Axes* axes)
 {
-  Vd vd=axes->fig->fc->vd;        
+  Vd vd=axes->fig->fc->vd;       
   Rect area=*axes->area,clip;
-  area.w+=axes->ylabel.area.w;
-
   {
     DrawRectangleLines(NODE_RECT_UNWRAP(area),axes->fig->theme.fg);
     area.x+=1;

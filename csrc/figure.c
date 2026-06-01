@@ -20,7 +20,9 @@
 #define DEFAULT_VELOCITY_DECAY 0.75f
 #define MINIMUM_VELOCITY 0.005f //reset to zero if lower than this to avoid flickering
 #define MAX_EMPTY_OFFSET 0.3f
-#define ZOOMX_SCALE 10.f
+#define ZOOMX_SCALE 3.f
+
+#define MINIMUM_VLEN 2 //could be 1 but limit would be 0
 
 #define THEME_DEFAULT (Theme){                  \
     .bg=BG_DEFAULT,                             \
@@ -33,13 +35,13 @@
 
 #define AXES_YLABEL_MAX_LEN 128
 
-static void  figure_compile(Figure* figure);
-static void   figure_create_axes(Figure *figure);
+static void figure_compile(Figure* figure);
+static void figure_create_axes(Figure *figure);
 static void load_font(Figure* figure);
 static void figure_update_xlim(Figure* figure);
 
 static void insert_bar(bool top, Rect* src, Rect* dest, size_t height, float spacing);
-static void  figure_draw_title(Figure *figure);
+static void figure_draw_title(Figure *figure);
 static void figure_mode_bar_draw(Figure *figure);
 static void figure_handle_inputs(Figure* figure);
 static void figure_draw_cursors(Figure *figure);
@@ -188,7 +190,7 @@ void figure_set_theme(Figure* figure, Theme theme)
 void figure_set_view_data(Figure* figure, size_t len, char *xformat, double *xdata, size_t timeframe)
 {
   ASSERT(figure);
-  ASSERT(len>0);
+  ASSERT(len>=MINIMUM_VLEN);
   ASSERT(xdata);
   ASSERT(xformat);
   ASSERT(timeframe!=0);
@@ -275,7 +277,7 @@ static void load_font(Figure* figure)
 static void figure_update_xlim(Figure* figure)
 {
   Fconfig *fc=figure->fc;
-  figure->xlim=get_lim(fc->xdata+fc->vd.start,fc->vd.len);
+  figure->xlim=get_lim(fc->xdata+fc->vd.start,fc->vd.vlen);
 }
 
 
@@ -305,30 +307,30 @@ static void figure_mode_bar_draw(Figure *figure)
   if(!fc->mode_bar.is_visible)return;
   Rect area=fc->mode_bar.area;
   Vd vd=fc->vd;
-#define LEN 128
+#define LEN 256
   char buf_[LEN]={0};
   char* buf=str_create(buf_,LEN);
   Theme theme=figure->theme;
+  str_clear(buf);
   str_append(buf,"fps=%d ",GetFPS());
+  
   Axes *aum=get_axes_under_mouse(figure);
   if(aum && aum->artist_len){
-    int skip=0;
     float mx=(GetMouseX()-aum->area->x)/aum->area->w;
-    float r=fabs(vd.offsetx)/vd.vlen;
-    if(fabs(vd.offsetx)>1.0){
-        skip=vd.offsetx<0.f?mx<r:mx>1.f-r;
-        if(vd.offsetx<0.0)mx-=r;
-        else mx+=r;
-    }
-    if(!skip){
-      float index=mx*vd.vlen+vd.start;
-      str_append(buf,"showing [%zu/%zu %zu] ",(size_t)index+1,vd.len, vd.vlen);
+    float index=mx*vd.vlen+vd.start+vd.offsetx;
+    if(index>=0.f && index<vd.len){     
+      str_append(buf,"showing [%zu %'zu/%'zu] ",(size_t)index,vd.eff_vlen,vd.len);
       size_t epoch= fc->xdata[(int)index]+(index-floor(index))*fc->timeframe;
       epoch2strftime(epoch,buf, fc->xformat);
     }
   }
   float x=align_text(&fc->font,buf,area.w, theme.font_size,theme.spacing, ALIGNMENT_LEFT);
-  DrawTextEx(fc->font,buf,(Vector2){x+area.x,area.y+1},theme.font_size,theme.font_spacing,WHITE);
+  DrawTextEx(fc->font,buf,(Vector2){x+area.x,area.y+1},theme.font_size,theme.font_spacing,theme.fg);
+  str_clear(buf);
+  str_append(buf,"%s","xindex[-1]=");    
+  epoch2strftime(fc->xdata[vd.len-1],buf, fc->xformat);
+  x=align_text(&fc->font,buf,area.w, theme.font_size,theme.spacing, ALIGNMENT_RIGHT);
+  DrawTextEx(fc->font,buf,(Vector2){x+area.x,area.y+1},theme.font_size,theme.font_spacing,theme.fg); 
 }
 
 static void figure_handle_inputs(Figure* figure)
@@ -388,12 +390,10 @@ static void figure_handle_inputs(Figure* figure)
     int toc=(2.f*ZOOMX_SCALE*wm.y*-1);
     long long vlen=vd.vlen+toc;
     size_t pvlen=vd.vlen;
-    vd.vlen=MIN(MAX(1,vlen),vd.len);
+    vd.vlen=MIN(MAX(MINIMUM_VLEN,vlen),vd.len);
     vlen=vd.vlen-pvlen;
     float left=(GetMouseX()-aum->area->x)/aum->area->w*vlen;
     vd.raw_start-=left;
-    /* vd.raw_start=fmin(vd.len-vd.vlen,fmax(0,(vd.raw_start+velocity->x*vd.vlen))); */
-
     double max_offset=vd.vlen*vd.max_offset;
     vd.raw_start=fmin(vd.len+max_offset,fmax(-max_offset,(vd.raw_start)));
     size_t l=fmax(0.f, vd.raw_start)+vd.vlen;
@@ -410,6 +410,10 @@ static void figure_handle_inputs(Figure* figure)
     size_t l=vd.start+vd.vlen;
     if(l>vd.len) vd.start = vd.len-vd.vlen;
     vd.stop=vd.start+vd.vlen;
+    //draw only the seen onces
+    /* if(vd.offsetx<0.f)vd.stop+=vd.offsetx; *///TODO:FIX
+    
+    vd.eff_vlen=vd.stop-vd.start;
     if(l<vd.len)vd.stop+=1;
   }
   if(need_update)figure->force_update=need_update;

@@ -22,6 +22,7 @@ struct Vd{
   size_t start;
   size_t stop; //exclusive
   size_t vlen;
+  size_t eff_vlen;
   size_t ulen;
   Vector2 velocity;
   Axes* aum;
