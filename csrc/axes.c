@@ -163,7 +163,7 @@ void axes_draw(Axes* axes)
   Artist* artist=axes->artist;
   if(!artist)return;
 
-  BeginScissorMode(NODE_RECT_UNWRAP(area));
+  /* BeginScissorMode(NODE_RECT_UNWRAP(area)); */
   {
     area.x-=vd.offsetx*axes->w;
     artist=axes->artist;

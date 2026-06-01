@@ -43,15 +43,16 @@ class Collector:
             raise NotImplementedError(f"{type(a)} is not an Artist")
 
     def update(self, df: pd.DataFrame, timeframe:int):
-        if len(df) > self._fig.len_data:
-            raise RuntimeError(f"length mismatch; prev {self._fig.len_data} new {len(df)}")
-        start=self._fig.len_data-len(df)
+        l=self._fig.api.total_len
+        if len(df) > l:
+            raise RuntimeError(f"length mismatch; prev {l} new {len(df)}")
+        start=l-len(df)
         self._fig.set_xdata(df.index, timeframe, start=start)
         if diff := self.__data_names__.difference(df.columns):
             raise ValueError(f"missing column names {diff}")
         tuple(map(lambda x: x.set_data(df[x.__data_names__],start=start), self._artists))
         self._fig.update()
-
+        
 
 class Figure:
     def __init__(self, rows: int = 1, cols: int = 1, xdata_format="[%d-%b %a %H:%M:%S]"):
@@ -67,8 +68,7 @@ class Figure:
         theme = self._api.fig.theme
         theme.font_path = self._api.cstr(str(FONT_PATH))
         self._api.lib.figure_set_theme(self._api.fig, theme)
-        self._api.this = self
-        
+        self._api.this = self        
 
         self.ax: list[Axes]
         self._init()
@@ -86,10 +86,6 @@ class Figure:
     def is_window_closed(self) -> bool:
         return self._api.is_window_closed
 
-    @property
-    @window_not_closed
-    def len_data(self) -> int:
-        return self._api.total_len
 
     def _init(self) -> None:
         self.ax = [Axes(i, self._api) for i in range(self._api.fig.axes_count)]
@@ -149,6 +145,7 @@ class Figure:
             self._api.lib.figure_set_view_data(self._api.fig, len(self._xdata), self.xdata_format.encode(), pxdata, timeframe)
             self._api.total_len=len(self._xdata)
         else:
+            assert len(self._xdata)==len(artist.xdata) ,"all xdata must be same length"
             if not np.all(self._xdata == artist.xdata):
                 raise NotImplementedError("got different xdata; all artist must share x-axis")
         del artist.xdata

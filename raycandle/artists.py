@@ -9,8 +9,6 @@ from .defines import *
 
 __all__ = ["Line", "Candle"]
 
-RED=Color.fromhex(0xff0000ff)
-
 class Line(Artist):
     def __init__(self, data: pd.Series, thick: float = 1.0, color: Optional[Color]=None,is_relative=False,is_splined=True, label: str = None, label_from_data: bool = False):
         if is_relative:
@@ -33,9 +31,7 @@ class Line(Artist):
         line_data = self._api.ffi.new("LineData*")
         line_data.is_splined = self.is_splined
         line_data.is_relative = self.is_relative
-        ydata=self.ydata.ctypes.data
-        del self.ydata
-        line_data.data=self._pdata = self._api.ffi.cast("double*",ydata)
+        line_data.data=self._pdata = self._api.ffi.cast("double*",self.ydata.ctypes.data)
         return (
             ArtistType.LINE,
             self.thick,                                   
@@ -78,14 +74,12 @@ class Candle(Artist):
     
     @override
     def _get_create_args(self) -> tuple[Any]:
-        ydata=self.ydata
-        del self.ydata
         return (
             ArtistType.CANDLE,
             self.thick,
             self._api.ffi.new("RColor[2]",self.color) if self.color is not None else self._api.ffi.NULL,
             self._api.cstr(self.label),
-            self._api.ffi.cast("double*", ydata.ctypes.data),
+            self._api.ffi.cast("double*", self.ydata.ctypes.data),
         )
 
     @override

@@ -9,8 +9,8 @@
 #include <locale.h>
 
 #define MAX_FIGURE_TITLE 256 // max figure title char
-#define FIGURE_ARENA_SIZE 1024*1024*1024
-#define NODES_ARENA_SIZE (size_t)1024*1024*8
+#define FIGURE_ARENA_SIZE 1024*1024
+#define NODES_ARENA_SIZE (size_t)1024*8
 #define DEFAULT_WINDOW_TITLE "rc"
 
 #define BG_DEFAULT GetColor(0x161511ff)
@@ -163,7 +163,7 @@ void figure_show(Figure* figure, char* window_title, int width, int height, int 
   Fconfig* fc=figure->fc;
   ASSERTM(fc->state==FIGURE_STATE_CREATED,"figure_show called again\n");
   raylib_init(figure,window_title,width,height,fps);//figure state will now be FIGURE_STATE_RUUNING
-  figure->force_update=true;//trigger updates the first loop
+  figure->force_update=true;//trigger updates the first 
   while (!WindowShouldClose()) {
     raylib_init_loop(figure);
     BeginDrawing();

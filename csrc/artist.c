@@ -186,14 +186,16 @@ static void  artist_line_draw(Artist* artist, Rect area)
   Vd vd=axes->fig->fc->vd;
   LineData *ldata=artist->data;
   double *data=ldata->data;
-  Limit destl=(Limit){.max=area.y,.min=area.h+area.y};
+  Limit destl=(Limit){.min=area.h+area.y,.max=area.y};
   if(ldata->is_splined){
     size_t rc=1;
-    for(size_t i=vd.start;i<vd.stop;++i,rc++){
-      DrawLineEx((Vector2){axes->w*(rc-1)+area.x,scale_to_limitf(data[i-1],axes->lim,destl)},
-                 (Vector2){axes->w*rc+area.x,scale_to_limitf(data[i],axes->lim,destl)},artist->thick,*artist->colors);
+    data+=vd.start;
+    for(size_t i=vd.start+1;i<vd.stop;++i,++rc){
+      DrawLineEx((Vector2){axes->w*(rc-1)+area.x,scale_to_limitf(data[rc-1],axes->lim,destl)},
+                 (Vector2){axes->w*rc+area.x,scale_to_limitf(data[rc],axes->lim,destl)},artist->thick,*artist->colors);
     }
-  }else{   
+  }
+  else{   
     double x[2]={0};
     double y[2]={0};
     Limit ylim=(ldata->is_relative)?(Limit){0.f,1.f}:axes->lim;
@@ -211,7 +213,6 @@ static void  artist_candle_draw(Artist* artist, Rect area)
   double *data=artist->data;
   float w_use_ratio=0.6;
   float w_use=w_use_ratio*axes->w;
-  float w_offset=(1.f-w_use_ratio)*0.0*axes->w;
   size_t rc=0;
   for(size_t i=vd.start;i<vd.stop;++i,++rc){
     double cl[4]={
@@ -222,7 +223,7 @@ static void  artist_candle_draw(Artist* artist, Rect area)
     };
     Limit limy=(Limit){.min=area.y+area.h,.max=area.y};
     scale_to_limit(cl,cl,4,axes->lim,limy);
-    float sx=(axes->w*rc)+w_offset+area.x;
+    float sx=(axes->w*rc)+area.x;
     Color c=artist->colors[(cl[0]>cl[3])?0:1];
     double min_oc=fmin(cl[0],cl[3]);
     DrawRectangleLines(sx,min_oc,w_use,fabs(cl[0]-cl[3]),c);

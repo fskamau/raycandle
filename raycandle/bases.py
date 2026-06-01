@@ -7,11 +7,9 @@ from cffi import FFI
 from .defines import *
 
 __all__ = [
+    "Artist",
     "Color",
-    "RC_Figure",
-    "RC_Artist",
 ]
-Color = NewType("Color", tuple[int, int, int, int])
 
 _T = TypeVar("_T")
 
