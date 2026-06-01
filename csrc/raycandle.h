@@ -38,7 +38,7 @@ typedef struct {
 
 
 typedef struct {
-  float min,max;
+  double min,max;
 }Limit;
 
 

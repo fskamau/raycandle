@@ -411,8 +411,7 @@ static void figure_handle_inputs(Figure* figure)
     if(l>vd.len) vd.start = vd.len-vd.vlen;
     vd.stop=vd.start+vd.vlen;
     //draw only the seen onces
-    /* if(vd.offsetx<0.f)vd.stop+=vd.offsetx; *///TODO:FIX
-    
+    /* if(vd.offsetx<0.f)vd.stop+=vd.offsetx; *///TODO:FIX    
     vd.eff_vlen=vd.stop-vd.start;
     if(l<vd.len)vd.stop+=1;
   }

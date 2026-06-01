@@ -20,9 +20,9 @@ void axes_update_ylim(Axes* axes)
   Artist* artist=axes->artist;
   if(!artist)return;
   Limit lim=(Limit){NAN,NAN};
-  Vd vd=axes->fig->fc->vd;        
+  Vd vd=axes->fig->fc->vd;
 
-  ASSERT(vd.vlen!=0); 
+  ASSERT(vd.vlen!=0);
   while(artist&&artist->is_limitable){
     Limit tlim=artist->avt->get_limit(artist);
     if (!isnan(tlim.min)) {
@@ -31,7 +31,7 @@ void axes_update_ylim(Axes* axes)
       } else if (tlim.min < lim.min) {
         lim.min = tlim.min;
       }
-    }    
+    }
     if (!isnan(tlim.max)) {
       if (isnan(lim.max)) {
         lim.max = tlim.max;
@@ -39,7 +39,7 @@ void axes_update_ylim(Axes* axes)
         lim.max = tlim.max;
       }
     }
-    artist=artist->next;  
+    artist=artist->next;
   }
   /* add offsetY to the limit */
   if(vd.offsety!=0.f){
@@ -74,7 +74,7 @@ static void axes_set_ylabel_len(Axes* axes)
   char *buf=str_create(buf_,LEN);
   Limit lim=axes->lim;
   Rect *area=&axes->ylabel.area;
-  
+
   str_clear(buf);
   str_append(buf,axes->ylabel.format,lim.min);
   size_t a=MeasureTextEx(font,buf,theme.font_size,theme.font_spacing).x;
@@ -89,8 +89,9 @@ static void axes_set_ylabel_len(Axes* axes)
   area->x=axes->area->x+axes->area->w-area->w;
   area->y=axes->area->y;
   area->h=axes->area->h;
-  
-  /* axes->area->w-=area->w; */
+
+  axes->area->w-=area->w; //sub here since axes->w need effective width
+
 }
 
 void axes_set_yformatter(Axes* axes,char* format)
@@ -110,23 +111,23 @@ static void axes_draw_ylabel(Axes* axes)
   //adjust gap
   area.x+=YLABEL_GAP;
   area.w-=YLABEL_GAP;
-  
+
   Theme theme=axes->fig->theme;
   Font font=axes->fig->fc->font;
   size_t label_count=area.h/(theme.font_size+YLABEL_PADDING);
   if(label_count==0)return;
 
   int aum=get_axes_under_mouse(axes->fig)==axes;
-  int mousey=GetMouseY(); 
+  int mousey=GetMouseY();
 
   float half_font=theme.font_size/2.f; ;
-  
+
 #define LEN 128
   char buf_[LEN]={0};
   char* buf=str_create(buf_, LEN);
   Limit srcl=(Limit){axes->area->y+axes->area->h,axes->area->y};
   float startx=area.x+YLABEL_STROKE_SIZE+YLABEL_GAP;
-  
+
   for(size_t i=0;i<label_count;++i){
     float y=area.y+i*(YLABEL_PADDING+theme.font_size)+YLABEL_PADDING;
     int diffm=mousey-y;
@@ -149,8 +150,9 @@ static void axes_draw_ylabel(Axes* axes)
 
 void axes_draw(Axes* axes)
 {
-  Vd vd=axes->fig->fc->vd;       
-  Rect area=*axes->area,clip;
+  Vd vd=axes->fig->fc->vd;
+  Rect area=*axes->area;
+  area.w+=axes->ylabel.area.w;
   {
     DrawRectangleLines(NODE_RECT_UNWRAP(area),axes->fig->theme.fg);
     area.x+=1;
@@ -161,13 +163,14 @@ void axes_draw(Axes* axes)
   Artist* artist=axes->artist;
   if(!artist)return;
 
-  clip=area;
-  area.x-=vd.offsetx*axes->w;
-  artist=axes->artist;
-  BeginScissorMode(NODE_RECT_UNWRAP(clip));
-  while(artist){
-    artist->avt->draw(artist,area);
-    artist=artist->next;    
+  BeginScissorMode(NODE_RECT_UNWRAP(area));
+  {
+    area.x-=vd.offsetx*axes->w;
+    artist=axes->artist;
+    while(artist){
+      artist->avt->draw(artist,area);
+      artist=artist->next;
+    }
   }
   EndScissorMode();
   axes_draw_ylabel(axes);
@@ -184,7 +187,7 @@ static void axes_draw_legend(Axes *axes)
     Rect area = *axes->area;
     float startx = 0;
     float starty = 0;
-    
+
     float lw = LEGEND_GAP + LEGEND_ICON_LEN + LEGEND_GAP + axes->legend.llen+LEGEND_GAP;
     float lh = axes->artist_len*(theme.font_size+LEGEND_GAP);
 
@@ -210,7 +213,7 @@ static void axes_draw_legend(Axes *axes)
     }
     DrawRectangleLines(startx,starty,lw,lh,Fade(theme.fg,0.2));
     float current_x = startx + LEGEND_GAP;
-    float current_y = starty + LEGEND_GAP; 
+    float current_y = starty + LEGEND_GAP;
 
     Artist *artist = axes->artist;
     while (artist) {
@@ -218,7 +221,7 @@ static void axes_draw_legend(Axes *axes)
         if (label) {
             artist->avt->draw_icon(artist,  (Vector2){.x = current_x, .y = current_y});
             Vector2 sx=(Vector2){current_x + LEGEND_ICON_LEN + LEGEND_GAP, current_y};
-            DrawTextEx(font, label,sx, theme.font_size, theme.font_spacing,theme.fg);           
+            DrawTextEx(font, label,sx, theme.font_size, theme.font_spacing,theme.fg);
         }
         current_y += theme.font_size + LEGEND_GAP;
         artist = artist->next;

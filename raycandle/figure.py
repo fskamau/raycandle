@@ -22,7 +22,7 @@ FONT_PATH = FPATH / "assets/font.ttf"
 
 
 class Collector:
-    def __init__(self, fig: "Figure", *args: RC_Artist):
+    def __init__(self, fig: "Figure", *args: ["Artist"]):
         self._artists, self.__data_names__ = [], set()
         if not isinstance(fig, Figure):
             raise TypeError(f"expected a Figure instance got {type(fig)}")
