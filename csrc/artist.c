@@ -193,7 +193,7 @@ static void  artist_line_draw(Artist* artist, Rect area)
     for(size_t i=vd.start+1;i<vd.stop;++i,++rc){
       DrawLineEx((Vector2){axes->w*(rc-1)+area.x,scale_to_limitf(data[rc-1],axes->lim,destl)},
                  (Vector2){axes->w*rc+area.x,scale_to_limitf(data[rc],axes->lim,destl)},artist->thick,*artist->colors);
-    }
+    }    
   }
   else{   
     double x[2]={0};
@@ -237,7 +237,7 @@ static void  artist_candle_draw(Artist* artist, Rect area)
 static void artist_line_draw_icon(Artist* artist, Vector2 start_pos)
 {
   Theme theme=artist->axes->fig->theme;
-  start_pos.y +=theme.font_size ; // draw a line middle as icon
+  start_pos.y +=theme.font_size/2 ; // draw a line middle as icon
   DrawLineEx(start_pos, (Vector2){start_pos.x + LEGEND_ICON_LEN, start_pos.y}, 1, *artist->colors);
 }
 

@@ -37,14 +37,13 @@ int main(){
 
   figure_set_view_data(figure,LEN,"%a/%d/%m %H:%M:%S",data,60);
 
-  artist_create(figure->axes+1,ARTIST_TYPE_LINE,1.0,&RED,NULL,&ldata);
+  artist_create(figure->axes+1,ARTIST_TYPE_LINE,1.0,&RED,"more",&ldata);
 
   
   /* artist_create(figure->axes,ARTIST_TYPE_LINE,2.0,NULL,&ldata); */
     
   artist_create(figure->axes,ARTIST_TYPE_CANDLE,1.0,(Color[2]){GetColor(0x079981ff),GetColor(0xf23645ff)},NULL,data+LEN);
 
-  Artist *x=artist_create(figure->axes+5,ARTIST_TYPE_CANDLE,1.0,(Color[2]){GetColor(0x079981ff),GetColor(0xf23645ff)},NULL,data+LEN);
     /* x->is_limitable=0; */
   
   

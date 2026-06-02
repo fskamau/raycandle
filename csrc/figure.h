@@ -31,6 +31,7 @@ struct Vd{
   double raw_start;
   float offsetx,offsety;
   float max_offset;
+  float scaley;
 };//view data
 
 

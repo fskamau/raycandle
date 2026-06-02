@@ -20,14 +20,14 @@ class Axes:
 
     @final
     @window_not_closed
-    def v_line(self, xpos: float, **kwargs) -> None:
+    def vline(self, xpos: float, **kwargs) -> None:
         """
         draws a vertical line perpendicular to `xpos`
         """
         if "is_splined" in kwargs or "is_relative" in kwargs:
             raise TypeError("line type cannot be set")
-        assert xpos >= 0 and xpos <= 1
-        self.plot(np.float64(xpos), line_type=LineType.V_LINE, **kwargs)
+        data=[ xpos, xpos,0.0,1.0]
+        self.plot(data, is_splined=False, is_relative=True, **kwargs)
 
     @final
     @window_not_closed

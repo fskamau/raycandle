@@ -10,7 +10,7 @@ from .defines import *
 __all__ = ["Line", "Candle"]
 
 class Line(Artist):
-    def __init__(self, data: pd.Series, thick: float = 1.0, color: Optional[Color]=None,is_relative=False,is_splined=True, label: str = None, label_from_data: bool = False):
+    def __init__(self, data: pd.Series, thick: float =1.0, color: Optional[Color]=None,is_relative=False,is_splined=True, label: str = None, label_from_data: bool = False):
         if is_relative:
             if(len(data)!=4):raise Exception
         if is_splined:

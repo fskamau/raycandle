@@ -24,6 +24,12 @@
 
 #define MINIMUM_VLEN 2 //could be 1 but limit would be 0
 
+#define MAX_ZOOMY 80.0
+#define ZOOMY_SCALE 10.0
+#define DEFAULT_ZOOMY -5.0
+
+#define ARROW_KEYS_SCALE 0.2
+
 #define THEME_DEFAULT (Theme){                  \
     .bg=BG_DEFAULT,                             \
       .fg=FG_DEFAULT,                           \
@@ -60,6 +66,7 @@ static Figure* figure_create_()
   figure->fc->signal_initialized=ready_signal_create(arena);
   figure->fc->vd.decay=DEFAULT_VELOCITY_DECAY;
   figure->fc->vd.max_offset=MAX_EMPTY_OFFSET;
+  figure->fc->vd.scaley=DEFAULT_ZOOMY;
   figure->arena=arena;
   return figure;
 }
@@ -357,6 +364,7 @@ static void figure_handle_inputs(Figure* figure)
     if(fabsf(md.x)>fabsf(md.y)) velocity->x+=(-md.x/aum->area->w);
     if(fabsf(md.y)>fabsf(md.x)) velocity->y=(-md.y/aum->area->h);
   }
+  
   //dragging with mouse horiz
   if(velocity->x!=0.f){
     double max_offset=vd.vlen*vd.max_offset;
@@ -367,6 +375,14 @@ static void figure_handle_inputs(Figure* figure)
       vd.raw_start-floor(vd.raw_start);
     velocity->x*=vd.decay;
     if(fabsf(velocity->x)<MINIMUM_VELOCITY)velocity->x=0.f;
+    need_update=1;
+  }
+
+  //fast move horiz with ARROW_(LEFT/RIGHT)
+  int arrow_key=(IsKeyPressed(KEY_LEFT)||IsKeyDown(KEY_LEFT))?-1.0:
+    (IsKeyPressed(KEY_RIGHT)||IsKeyDown(KEY_RIGHT))?1.0:0;
+  if(arrow_key!=0){
+    velocity->x+=arrow_key*ARROW_KEYS_SCALE;
     need_update=1;
   }
 
@@ -381,39 +397,47 @@ static void figure_handle_inputs(Figure* figure)
   if(IsKeyPressed(KEY_R)){
     velocity->x=velocity->y=0.f;
     vd.offsety=0.f;
+    vd.scaley=DEFAULT_ZOOMY;
     need_update=1;
   }
 
-  //zoomx
   Vector2 wm=GetMouseWheelMoveV();
-  if(aum && wm.y!=0.f && has_artists){
-    int toc=(2.f*ZOOMX_SCALE*wm.y*-1);
-    long long vlen=vd.vlen+toc;
-    size_t pvlen=vd.vlen;
-    vd.vlen=MIN(MAX(MINIMUM_VLEN,vlen),vd.len);
-    vlen=vd.vlen-pvlen;
-    float left=(GetMouseX()-aum->area->x)/aum->area->w*vlen;
-    vd.raw_start-=left;
-    double max_offset=vd.vlen*vd.max_offset;
-    vd.raw_start=fmin(vd.len+max_offset,fmax(-max_offset,(vd.raw_start)));
-    size_t l=fmax(0.f, vd.raw_start)+vd.vlen;
-    vd.offsetx=(vd.raw_start<0)?vd.raw_start:
-      (l>vd.len)?vd.raw_start+vd.vlen-vd.len:
-      vd.raw_start-floor(vd.raw_start);
-
-    need_update=1;
+  if(aum && has_artists){
+    //zoomx
+    if(wm.y!=0.f){
+      int toc=(2*ZOOMX_SCALE*wm.y*-1);
+      long long vlen=vd.vlen+toc;
+      size_t pvlen=vd.vlen;
+      vd.vlen=MIN(MAX(MINIMUM_VLEN,vlen),vd.len);
+      vlen=vd.vlen-pvlen;
+      float left=(GetMouseX()-aum->area->x)/aum->area->w*vlen;
+      vd.raw_start-=left;
+      double max_offset=vd.vlen*vd.max_offset;
+      vd.raw_start=fmin(vd.len+max_offset,fmax(-max_offset,(vd.raw_start)));
+      size_t l=fmax(0.f, vd.raw_start)+vd.vlen;
+      vd.offsetx=(vd.raw_start<0)?vd.raw_start:
+        (l>vd.len)?vd.raw_start+vd.vlen-vd.len:
+        vd.raw_start-floor(vd.raw_start);
+      need_update=1;
+    }
+    //zoomy
+    if(wm.x!=0.f){
+      float temp=vd.scaley;
+      vd.scaley+=wm.x*ZOOMY_SCALE;
+      vd.scaley=MAX(-MAX_ZOOMY,MIN(MAX_ZOOMY,vd.scaley));
+      need_update=temp!=vd.scaley;
+    }
   }
-
+  
   //finally
   {
     vd.start=fmax(0.f,vd.raw_start);
     size_t l=vd.start+vd.vlen;
     if(l>vd.len) vd.start = vd.len-vd.vlen;
     vd.stop=vd.start+vd.vlen;
-    //draw only the seen onces
-    /* if(vd.offsetx<0.f)vd.stop+=vd.offsetx; *///TODO:FIX    
     vd.eff_vlen=vd.stop-vd.start;
-    if(l<vd.len)vd.stop+=1;
+    if(l<vd.len)vd.stop+=1;    
+    if(l<vd.len-1)vd.stop+=1;    
   }
   if(need_update)figure->force_update=need_update;
   fc->vd=vd;

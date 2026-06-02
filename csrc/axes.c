@@ -47,6 +47,12 @@ void axes_update_ylim(Axes* axes)
     lim.min+=diff;
     lim.max+=diff;
   }
+  //update with Vd.scaley
+  float diff=lim.max-lim.min;
+  float to_mod=diff*vd.scaley/100.f/2.f;
+  lim.min+=to_mod;
+  lim.max-=to_mod;
+      
   axes->lim=lim;
 
   axes_set_ylabel_len(axes);//measure out label
@@ -163,7 +169,7 @@ void axes_draw(Axes* axes)
   Artist* artist=axes->artist;
   if(!artist)return;
 
-  /* BeginScissorMode(NODE_RECT_UNWRAP(area)); */
+  BeginScissorMode(NODE_RECT_UNWRAP(area));
   {
     area.x-=vd.offsetx*axes->w;
     artist=axes->artist;

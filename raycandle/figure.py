@@ -43,7 +43,7 @@ class Collector:
             raise NotImplementedError(f"{type(a)} is not an Artist")
 
     def update(self, df: pd.DataFrame, timeframe:int):
-        l=self._fig.api.total_len
+        l=self._fig._api.total_len
         if len(df) > l:
             raise RuntimeError(f"length mismatch; prev {l} new {len(df)}")
         start=l-len(df)
