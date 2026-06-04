@@ -59,7 +59,6 @@ Limit get_lim(const double *data, size_t len)
             found = 1;
         }
     }
-
     return found ? lim : (Limit){NAN, NAN};
 }
 

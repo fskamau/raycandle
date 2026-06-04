@@ -6,7 +6,7 @@
 #include "artist.h"
 #include <string.h>
 
-#define LEN (size_t)3000
+#define LEN (size_t)200
 int main(){
   Arena *arena=arena_create(1024*1024*1024);
   NC* nc=nc_create(1024*1024*1024);
