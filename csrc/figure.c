@@ -435,7 +435,7 @@ static void figure_handle_inputs(Figure* figure)
     size_t l=vd.start+vd.vlen;
     if(l>vd.len) vd.start = vd.len-vd.vlen;
     vd.stop=vd.start+vd.vlen;
-    vd.eff_vlen=vd.stop-vd.start;
+    vd.eff_vlen=vd.stop-vd.start; 
     if(vd.offsetx<0.f)vd.stop+=vd.offsetx;
     if(vd.offsetx>1.f)vd.start+=vd.offsetx;
     if(l<vd.len)vd.stop+=1;    
