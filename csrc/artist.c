@@ -112,7 +112,6 @@ void artist_line_set_data(Artist* artist,  double*data, size_t start, size_t len
   else
     {ASSERTM(len==4, "non splined lines data len is always 4\n");}
   memcpy(ldata->data+start,data, sizeof(*ldata->data)*len);
-  artist->axes->fig->force_update=true;
 }
 
 void artist_candle_set_data(Artist* artist, double*data, size_t start, size_t len)
@@ -126,7 +125,6 @@ void artist_candle_set_data(Artist* artist, double*data, size_t start, size_t le
   ASSERTM(start+len<=vd_len, "slicing index error\n");
   for(size_t i=0;i<4;++i)
     memcpy(dest+vd_len*i+start,data+len*i,sizeof(*dest)*len);
-  artist->axes->fig->force_update=true;
 }
 
 static void  artist_candle_init(Artist* artist)
@@ -161,7 +159,7 @@ static Limit artist_line_get_limit(Artist* artist)
 {
   Vd vd=artist->axes->fig->fc->vd;
   LineData *l=artist->data;
-  if(l->is_splined)  return get_lim(l->data+vd.start,vd.stop-vd.start);
+  if(l->is_splined)  return get_lim(l->data+vd.start,vd.eff_vlen);
   if(l->is_relative) return (Limit){.min=NAN,.max=NAN};
   return get_lim(l->data+2,2);
 }
@@ -171,8 +169,8 @@ static Limit artist_candle_get_limit(Artist* artist){
   Vd vd=axes->fig->fc->vd;
   size_t len=axes->fig->fc->vd.len;
   double *data=artist->data;
-  Limit l1=get_lim(data+(len*1)+vd.start,vd.stop-vd.start);//o,[h],l,c
-  Limit l2=get_lim(data+(len*2)+vd.start,vd.stop-vd.start);//o,h,[l],c
+  Limit l1=get_lim(data+(len*1)+vd.start,vd.eff_vlen);//o,[h],l,c
+  Limit l2=get_lim(data+(len*2)+vd.start,vd.eff_vlen);//o,h,[l],c
   double array_lim[4]={l1.min,l1.max,l2.min,l2.max};
   Limit lim=get_lim(array_lim,4);
   return lim;
@@ -200,7 +198,7 @@ static void  artist_line_draw(Artist* artist, Rect area)
     double y[2]={0};
     Limit ylim=(ldata->is_relative)?(Limit){0.f,1.f}:axes->lim;
     Limit xlim=(ldata->is_relative)?(Limit){0.f,1.f}:axes->fig->xlim;
-    scale_to_limit(data,x, 2, xlim, (Limit){area.x,area.x+area.w});
+    scale_to_limit(data,x, 2, xlim,(Limit){area.x,area.x+area.w});
     scale_to_limit(data+2, y, 2, ylim, destl);
     DrawLineEx((Vector2){*x,*y},(Vector2){x[1],y[1]},artist->thick,*artist->colors);
   }

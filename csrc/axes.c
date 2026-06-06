@@ -52,7 +52,6 @@ void axes_update_ylim(Axes* axes)
   float to_mod=diff*vd.scaley/100.f/2.f;
   lim.min+=to_mod;
   lim.max-=to_mod;
-      
   axes->lim=lim;
 
   axes_set_ylabel_len(axes);//measure out label
@@ -171,7 +170,10 @@ void axes_draw(Axes* axes)
 
   BeginScissorMode(NODE_RECT_UNWRAP(area));
   {
-    area.x-=vd.offsetx*axes->w;
+    double of=vd.offsetx;
+    if(of>0.f) of-= floor(of);
+    area.x-=of*axes->w;
+
     artist=axes->artist;
     while(artist){
       artist->avt->draw(artist,area);

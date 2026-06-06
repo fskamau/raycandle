@@ -147,8 +147,8 @@ void figure_update(Figure* figure){
   NC* nc=figure->fc->nc;
   float spacing=figure->theme.spacing;
   Rect area=(Rect){0,0,GetScreenWidth(),GetScreenHeight()};
-  if(fc->title_bar.is_visible)insert_bar(1, &area,&fc->title_bar.area, figure->theme.font_size,figure->theme.spacing);
-  if(fc->mode_bar.is_visible)insert_bar(0, &area,&fc->mode_bar.area, figure->theme.font_size,figure->theme.spacing);
+  if(fc->title_bar.is_visible)insert_bar(0, &area,&fc->title_bar.area, figure->theme.font_size,figure->theme.spacing);
+  if(fc->mode_bar.is_visible)insert_bar(1, &area,&fc->mode_bar.area, figure->theme.font_size,figure->theme.spacing);
   figure_handle_inputs(figure);
   if(figure->force_update){
     nc_set_area(nc,figure->fc->rects,area,spacing);
@@ -170,7 +170,7 @@ void figure_show(Figure* figure, char* window_title, int width, int height, int 
   Fconfig* fc=figure->fc;
   ASSERTM(fc->state==FIGURE_STATE_CREATED,"figure_show called again\n");
   raylib_init(figure,window_title,width,height,fps);//figure state will now be FIGURE_STATE_RUUNING
-  figure->force_update=true;//trigger updates the first 
+  figure->force_update=true;//trigger updates the first
   while (!WindowShouldClose()) {
     raylib_init_loop(figure);
     BeginDrawing();
@@ -320,12 +320,12 @@ static void figure_mode_bar_draw(Figure *figure)
   Theme theme=figure->theme;
   str_clear(buf);
   str_append(buf,"fps=%d ",GetFPS());
-  
+
   Axes *aum=get_axes_under_mouse(figure);
   if(aum && aum->artist_len){
     float mx=(GetMouseX()-aum->area->x)/aum->area->w;
-    float index=mx*vd.vlen+vd.start+vd.offsetx;
-    if(index>=0.f && index<vd.len){     
+    float index=mx*vd.vlen+vd.start;
+    if(index>=0.f && index<vd.len){
       str_append(buf,"showing [%zu %'zu/%'zu] ",(size_t)index,vd.eff_vlen,vd.len);
       size_t epoch= fc->xdata[(int)index]+(index-floor(index))*fc->timeframe;
       epoch2strftime(epoch,buf, fc->xformat);
@@ -334,10 +334,10 @@ static void figure_mode_bar_draw(Figure *figure)
   float x=align_text(&fc->font,buf,area.w, theme.font_size,theme.spacing, ALIGNMENT_LEFT);
   DrawTextEx(fc->font,buf,(Vector2){x+area.x,area.y+1},theme.font_size,theme.font_spacing,theme.fg);
   str_clear(buf);
-  str_append(buf,"%s","xindex[-1]=");    
+  str_append(buf,"%s","xindex[-1]=");
   epoch2strftime(fc->xdata[vd.len-1],buf, fc->xformat);
   x=align_text(&fc->font,buf,area.w, theme.font_size,theme.spacing, ALIGNMENT_RIGHT);
-  DrawTextEx(fc->font,buf,(Vector2){x+area.x,area.y+1},theme.font_size,theme.font_spacing,theme.fg); 
+  DrawTextEx(fc->font,buf,(Vector2){x+area.x,area.y+1},theme.font_size,theme.font_spacing,theme.fg);
 }
 
 static void figure_handle_inputs(Figure* figure)
@@ -364,15 +364,11 @@ static void figure_handle_inputs(Figure* figure)
     if(fabsf(md.x)>fabsf(md.y)) velocity->x+=(-md.x/aum->area->w);
     if(fabsf(md.y)>fabsf(md.x)) velocity->y=(-md.y/aum->area->h);
   }
-  
+
   //dragging with mouse horiz
   if(velocity->x!=0.f){
     double max_offset=vd.vlen*vd.max_offset;
     vd.raw_start=fmin(vd.len+max_offset-vd.vlen,fmax(-max_offset,(vd.raw_start+velocity->x*vd.vlen)));
-    size_t l=fmax(0.f, vd.raw_start)+vd.vlen;
-    vd.offsetx=(vd.raw_start<0)?vd.raw_start:
-      (l>vd.len)?vd.raw_start+vd.vlen-vd.len:
-      vd.raw_start-floor(vd.raw_start);
     velocity->x*=vd.decay;
     if(fabsf(velocity->x)<MINIMUM_VELOCITY)velocity->x=0.f;
     need_update=1;
@@ -414,10 +410,6 @@ static void figure_handle_inputs(Figure* figure)
       vd.raw_start-=left;
       double max_offset=vd.vlen*vd.max_offset;
       vd.raw_start=fmin(vd.len+max_offset,fmax(-max_offset,(vd.raw_start)));
-      size_t l=fmax(0.f, vd.raw_start)+vd.vlen;
-      vd.offsetx=(vd.raw_start<0)?vd.raw_start:
-        (l>vd.len)?vd.raw_start+vd.vlen-vd.len:
-        vd.raw_start-floor(vd.raw_start);
       need_update=1;
     }
     //zoomy
@@ -428,18 +420,20 @@ static void figure_handle_inputs(Figure* figure)
       need_update=temp!=vd.scaley;
     }
   }
-  
+
   //finally
   {
+    double l=fmax(0.f, vd.raw_start)+vd.vlen;
+    vd.offsetx=(vd.raw_start<0)?vd.raw_start:
+      (l>vd.len)?l-vd.len:
+      vd.raw_start-floor(vd.raw_start);
     vd.start=fmax(0.f,vd.raw_start);
-    size_t l=vd.start+vd.vlen;
-    if(l>vd.len) vd.start = vd.len-vd.vlen;
-    vd.stop=vd.start+vd.vlen;
-    vd.eff_vlen=vd.stop-vd.start; 
-    if(vd.offsetx<0.f)vd.stop+=vd.offsetx;
-    if(vd.offsetx>1.f)vd.start+=vd.offsetx;
-    if(l<vd.len)vd.stop+=1;    
-    if(l<vd.len-1)vd.stop+=1;    
+    vd.eff_vlen=vd.vlen-fabs(floor(vd.offsetx));
+    vd.stop=vd.start+vd.eff_vlen;
+    ASSERT(vd.len>=vd.stop);
+    if(l<vd.len)vd.stop+=1;
+    if(l<vd.len-1)vd.stop+=1;
+    if(vd.offsetx>1.f)vd.offsetx=vd.raw_start-floor(vd.raw_start);
   }
   if(need_update)figure->force_update=need_update;
   fc->vd=vd;
@@ -453,7 +447,7 @@ static void  figure_draw_title(Figure *figure)
   Theme theme=figure->theme;
   Rect area=fc->title_bar.area;
   float x=align_text(&fc->font,figure->title,area.w, theme.font_size,theme.spacing, ALIGNMENT_CENTER);
-  DrawTextEx(fc->font,figure->title,(Vector2){x+area.x,area.y+1},theme.font_size,theme.font_spacing,Fade(theme.fg,1.0));  
+  DrawTextEx(fc->font,figure->title,(Vector2){x+area.x,area.y+1},theme.font_size,theme.font_spacing,Fade(theme.fg,1.0));
 }
 
 
@@ -482,7 +476,7 @@ static void  figure_draw_cursors(Figure *figure)
 
 static void figure_axes_init(Figure* figure)
 {
-  const int buflen=256;  
+  const int buflen=256;
   char buf_[buflen];
   Theme theme=figure->theme;
   Font font=figure->fc->font;
@@ -493,5 +487,5 @@ static void figure_axes_init(Figure* figure)
     str_clear(buf);
     for(size_t x=0;x<axes->legend.llen;++x)str_append(buf,"%s"," ");
     axes->legend.llen=MeasureTextEx(font, buf, theme.font_size,theme.font_spacing).x;
-  }    
+  }
 }

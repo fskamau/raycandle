@@ -34,7 +34,7 @@ void scale_to_limit(const double *data, double *dest, size_t count, Limit srcl, 
   ASSERT(data && dest &&count);    
   double srcl_span = srcl.max - srcl.min;
   double destl_span = destl.max - destl.min;
-  ASSERTM(srcl_span != 0.0, "Source span cannot be zero");
+  ASSERTM(srcl_span != 0.0, "limit.min == limit.max");
   double scale = destl_span / srcl_span;
   double offset = destl.min - (srcl.min * scale);
 
