@@ -284,7 +284,7 @@ static void load_font(Figure* figure)
 static void figure_update_xlim(Figure* figure)
 {
   Fconfig *fc=figure->fc;
-  figure->xlim=get_lim(fc->xdata+fc->vd.start,fc->vd.vlen);
+  figure->xlim=get_lim(fc->xdata+fc->vd.start,fc->vd.eff_vlen);
 }
 
 
@@ -322,9 +322,9 @@ static void figure_mode_bar_draw(Figure *figure)
   str_append(buf,"fps=%d ",GetFPS());
 
   Axes *aum=get_axes_under_mouse(figure);
-  if(aum && aum->artist_len){
+  if(aum && aum->artist_len){//TODO: FIX INDEXING
     float mx=(GetMouseX()-aum->area->x)/aum->area->w;
-    float index=mx*vd.vlen+vd.start;
+    float index=mx*vd.eff_vlen+vd.start;
     if(index>=0.f && index<vd.len){
       str_append(buf,"showing [%zu %'zu/%'zu] ",(size_t)index,vd.eff_vlen,vd.len);
       size_t epoch= fc->xdata[(int)index]+(index-floor(index))*fc->timeframe;
