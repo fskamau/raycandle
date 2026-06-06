@@ -326,9 +326,14 @@ static void figure_mode_bar_draw(Figure *figure)
     float mx=(GetMouseX()-aum->area->x)/aum->area->w;
     float index=mx*vd.eff_vlen+vd.start;
     if(index>=0.f && index<vd.len){
-      str_append(buf,"showing [%zu %'zu/%'zu] ",(size_t)index,vd.eff_vlen,vd.len);
-      size_t epoch= fc->xdata[(int)index]+(index-floor(index))*fc->timeframe;
-      epoch2strftime(epoch,buf, fc->xformat);
+      Limit src=(Limit){aum->area->x,aum->area->x+aum->area->w};
+      Limit dest=(Limit){vd.raw_start,vd.raw_start+vd.vlen};
+      float index=scale_to_limitf(GetMouseX(),src,dest);
+      if(index>=0.f && index<=vd.len){
+        str_append(buf,"showing [at:%zu %'zu/%'zu] ",(size_t)index,vd.eff_vlen,vd.len);
+        size_t epoch= fc->xdata[(int)index]+(index-floor(index))*fc->timeframe;
+        epoch2strftime(epoch,buf, fc->xformat);
+      }
     }
   }
   float x=align_text(&fc->font,buf,area.w, theme.font_size,theme.spacing, ALIGNMENT_LEFT);
