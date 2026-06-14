@@ -30,11 +30,20 @@ typedef struct {
 }Legend;
 
 
+#ifndef RAYLIB_H
+
 // Color port from raylib to cffi
 typedef struct {
   unsigned char r,g,b,a;
 }RColor;
 #define RColor Color
+
+typedef RColor Color;
+
+typedef void Font;
+
+
+#endif // RAYLIB_H
 
 
 typedef struct {
@@ -67,7 +76,7 @@ struct Artist{
   ArtistType atype;
   void *data;
   Artist* next;
-  RColor* colors;
+  Color* colors;
   Axes* axes;
   ArtistVTable* avt;
   char *label;
@@ -88,16 +97,17 @@ struct Axes{
   Artist *artist;
   size_t artist_len;
   Legend legend;
-  RColor facecolor;
+  Color facecolor;
   Limit lim;
   Str title;
   size_t tableau_t10_index;
   Label ylabel;
+  int lim_fixed;
 };
 
 typedef struct Theme Theme;
 struct Theme{
-  RColor bg,fg;
+  Color bg,fg;
   size_t font_size;
   size_t font_spacing;
   float spacing;
@@ -119,6 +129,7 @@ struct Figure {
   Axes* axes;
   Limit xlim;
   size_t axes_count;
+  Font* font;
 };
 
 double scale_to_limitf(double val, Limit src, Limit dest);
@@ -128,13 +139,14 @@ Limit get_lim(const double *data, size_t len);
 
 
 //artist
-Artist* artist_create(Axes *axes, ArtistType atype, float thick, RColor* colors, const char* label ,void *data);
+Artist* artist_create(Axes *axes, ArtistType atype, float thick, Color* colors, const char* label ,void *data);
 void artist_line_set_data(Artist* artist,  double*data, size_t start, size_t len); //copy `data` of len `len` to &internal_buffer[`start`]
 void artist_candle_set_data(Artist* artist, double*data, size_t start, size_t len);//copy `data` of len `len` to &internal_buffer[`start`]
 
 //axes
 void axes_show_legend(Axes* axes, LegendPosition lp);
 void axes_set_yformatter(Axes* axes,char* format);
+void axes_set_ylim(Axes* axes,double min, double max);
 
 //figure
 Figure* figure_create(size_t rows, size_t cols);
@@ -155,7 +167,7 @@ void figure_show_legends(Figure* figure, LegendPosition lp);
 
 //===control the event loop manually====
 void raylib_init(Figure *figure,char *window_title,int width, int height, int fps); //calls initWindow
-void raylib_init_loop(); //call every loop to set up keyboard events
+void raylib_init_loop(Figure* figure); //call every loop to set up keyboard events
 void figure_update(Figure* figure); //call every loo[ to update the figure e.g axes etc
 
 

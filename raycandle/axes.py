@@ -74,8 +74,8 @@ class Axes:
 
     @final
     @window_not_closed
-    def set_ylim(self, ylim: tuple[float, float]) -> None:
-        self._api.lib.axes_set_ylim(self._api.fig.axes + self._id, ylim)
+    def set_ylim(self, vmin:float, vmax:float) -> None:
+        self._api.lib.axes_set_ylim(self._axes , vmin,vmax)
 
     @final
     @window_not_closed

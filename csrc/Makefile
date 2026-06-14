@@ -1,5 +1,6 @@
 CC = gcc
-CFLAGS = -Wextra -Wall -O3 -fPIC -std=c99 $(shell pkg-config --cflags raylib 2>/dev/null || echo "-I/usr/local/include")
+
+CFLAGS = -Wextra -Wall  -fPIC -std=c99  $(shell pkg-config --cflags raylib)
 LDFLAGS = $(shell pkg-config --libs raylib 2>/dev/null || echo "-L/usr/local/lib -lraylib") -lm -lpthread -lGL
 
 TARGET_FOLDER = ./build
@@ -9,7 +10,14 @@ ASSETS_FOLDER = ./assets
 SOURCES = utils.c str.c figure.c node.c axes.c ready_signal.c artist.c
 OBJECTS = $(patsubst %.c,$(TARGET_FOLDER)/%.o, $(SOURCES))
 
-all: $(TARGET_FOLDER)/libraycandle.so.1
+all: $(TARGET_FOLDER)/libraycandle.so.1  link_to_local
+
+link_to_local: $(TARGET_FOLDER)/libraycandle.so.1
+	$(shell [ ! -e $(TARGET_FOLDER)/libraycandle.so ] && ln -sr $(TARGET_FOLDER)/libraycandle.so.1  $(TARGET_FOLDER)/libraycandle.so)
+
+cp_h_2_build: install
+	cp  raycandle.h node.h  $(TARGET_FOLDER)
+	cp -r $(PY_PKG_FOLDER)/$(ASSETS_FOLDER) $(TARGET_FOLDER)/
 
 $(TARGET_FOLDER):
 	mkdir -p $(TARGET_FOLDER)
@@ -19,6 +27,7 @@ $(TARGET_FOLDER)/%.o: %.c | $(TARGET_FOLDER)
 
 $(TARGET_FOLDER)/libraycandle.so.1: $(OBJECTS)
 	$(CC) -shared -o $@ -Wl,-soname,libraycandle.so.1 $(OBJECTS) $(LDFLAGS)
+
 
 cffi: $(TARGET_FOLDER)/raycandle.h
 
@@ -31,8 +40,8 @@ install: all cffi
 		echo "ERROR: '$(PY_PKG_FOLDER)' does not exist" >&2; \
 		exit 1; \
 	fi
-	cp -r $(TARGET_FOLDER)/libraycandle.so.1 $(PY_PKG_FOLDER)/libraycandle.so
-	cp -r $(TARGET_FOLDER)/raycandle.h $(PY_PKG_FOLDER)/
+	cp  $(TARGET_FOLDER)/libraycandle.so.1 $(PY_PKG_FOLDER)/libraycandle.so
+	cp  $(TARGET_FOLDER)/raycandle.h $(PY_PKG_FOLDER)/
 	cp -r $(ASSETS_FOLDER) $(PY_PKG_FOLDER)/
 
 clean:

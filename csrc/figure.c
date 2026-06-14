@@ -9,7 +9,7 @@
 #include <locale.h>
 
 #define MAX_FIGURE_TITLE 256 // max figure title char
-#define FIGURE_ARENA_SIZE 1024*1024
+#define FIGURE_ARENA_SIZE 1000*1024*1024
 #define NODES_ARENA_SIZE (size_t)1024*8
 #define DEFAULT_WINDOW_TITLE "rc"
 
@@ -17,15 +17,14 @@
 #define FG_DEFAULT GetColor(0x8b8ba7ff)
 #define VIEWPORT_INITIAL_LEN 120
 
-#define DEFAULT_VELOCITY_DECAY 0.75f
+#define DEFAULT_VELOCITY_DECAY 0.5f
 #define MINIMUM_VELOCITY 0.005f //reset to zero if lower than this to avoid flickering
-#define MAX_EMPTY_OFFSET 0.3f
-#define ZOOMX_SCALE 3.f
+#define MAX_EMPTY_OFFSET 0.75f
 
 #define MINIMUM_VLEN 2 //could be 1 but limit would be 0
 
-#define MAX_ZOOMY 80.0
-#define ZOOMY_SCALE 10.0
+#define MAX_ZOOMY 90.0
+#define ZOOMY_SCALE 20.0
 #define DEFAULT_ZOOMY -5.0
 
 #define ARROW_KEYS_SCALE 0.2
@@ -56,7 +55,7 @@ static void figure_axes_init(Figure* figure);
 static Figure* figure_create_()
 {
   setlocale(LC_ALL,"");
- Arena* arena=arena_create((size_t)FIGURE_ARENA_SIZE);
+  Arena* arena=arena_create((size_t)FIGURE_ARENA_SIZE);
   Figure* figure=arena_alloc(arena,sizeof(Figure));
   memset(figure,0,sizeof(Figure));
   figure->theme=THEME_DEFAULT;
@@ -270,7 +269,8 @@ static void figure_create_axes(Figure *figure)
 static void load_font(Figure* figure)
 {
   Fconfig* fc=figure->fc;
-  Font* font=&figure->fc->font,temp;
+  figure->font=arena_alloc(figure->arena,sizeof(Font));
+  Font* font=figure->font,temp;
   *font=GetFontDefault();
   if(fc->font_path){
     temp=LoadFont(fc->font_path);
@@ -330,19 +330,19 @@ static void figure_mode_bar_draw(Figure *figure)
       Limit dest=(Limit){vd.raw_start,vd.raw_start+vd.vlen};
       float index=scale_to_limitf(GetMouseX(),src,dest);
       if(index>=0.f && index<=vd.len){
-        str_append(buf,"showing [at:%zu %'zu/%'zu] ",(size_t)index,vd.eff_vlen,vd.len);
+        str_append(buf,"showing [start:%zu at:%zu %'zu/%'zu] ",vd.start,(size_t)index,vd.eff_vlen,vd.len);
         size_t epoch= fc->xdata[(int)index]+(index-floor(index))*fc->timeframe;
         epoch2strftime(epoch,buf, fc->xformat);
       }
     }
   }
-  float x=align_text(&fc->font,buf,area.w, theme.font_size,theme.spacing, ALIGNMENT_LEFT);
-  DrawTextEx(fc->font,buf,(Vector2){x+area.x,area.y+1},theme.font_size,theme.font_spacing,theme.fg);
+  float x=align_text(figure->font,buf,area.w, theme.font_size,theme.spacing, ALIGNMENT_LEFT);
+  DrawTextEx(*figure->font,buf,(Vector2){x+area.x,area.y+1},theme.font_size,theme.font_spacing,theme.fg);
   str_clear(buf);
   str_append(buf,"%s","xindex[-1]=");
   epoch2strftime(fc->xdata[vd.len-1],buf, fc->xformat);
-  x=align_text(&fc->font,buf,area.w, theme.font_size,theme.spacing, ALIGNMENT_RIGHT);
-  DrawTextEx(fc->font,buf,(Vector2){x+area.x,area.y+1},theme.font_size,theme.font_spacing,theme.fg);
+  x=align_text(figure->font,buf,area.w, theme.font_size,theme.spacing, ALIGNMENT_RIGHT);
+  DrawTextEx(*figure->font,buf,(Vector2){x+area.x,area.y+1},theme.font_size,theme.font_spacing,theme.fg);
 }
 
 static void figure_handle_inputs(Figure* figure)
@@ -406,8 +406,9 @@ static void figure_handle_inputs(Figure* figure)
   if(aum && has_artists){
     //zoomx
     if(wm.y!=0.f){
-      int toc=(2*ZOOMX_SCALE*wm.y*-1);
-      long long vlen=vd.vlen+toc;
+      vd.zoomx+=1;
+      long long vlen=vd.vlen+vd.zoomx*-wm.y;
+      if(vlen<MINIMUM_VLEN)vd.zoomx=0;            
       size_t pvlen=vd.vlen;
       vd.vlen=MIN(MAX(MINIMUM_VLEN,vlen),vd.len);
       vlen=vd.vlen-pvlen;
@@ -451,8 +452,8 @@ static void  figure_draw_title(Figure *figure)
   if(!fc->title_bar.is_visible || !figure->title)return;
   Theme theme=figure->theme;
   Rect area=fc->title_bar.area;
-  float x=align_text(&fc->font,figure->title,area.w, theme.font_size,theme.spacing, ALIGNMENT_CENTER);
-  DrawTextEx(fc->font,figure->title,(Vector2){x+area.x,area.y+1},theme.font_size,theme.font_spacing,Fade(theme.fg,1.0));
+  float x=align_text(figure->font,figure->title,area.w, theme.font_size,theme.spacing, ALIGNMENT_CENTER);
+  DrawTextEx(*figure->font,figure->title,(Vector2){x+area.x,area.y+1},theme.font_size,theme.font_spacing,Fade(theme.fg,1.0));
 }
 
 
@@ -484,7 +485,7 @@ static void figure_axes_init(Figure* figure)
   const int buflen=256;
   char buf_[buflen];
   Theme theme=figure->theme;
-  Font font=figure->fc->font;
+  Font font=*figure->font;
   char* buf=str_create(buf_,buflen);
   for(size_t i=0;i<figure->axes_count;++i){
     Axes* axes=figure->axes+i;

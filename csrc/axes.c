@@ -23,36 +23,40 @@ void axes_update_ylim(Axes* axes)
   Vd vd=axes->fig->fc->vd;
 
   ASSERT(vd.vlen!=0);
-  while(artist&&artist->is_limitable){
-    Limit tlim=artist->avt->get_limit(artist);
-    if (!isnan(tlim.min)) {
-      if (isnan(lim.min)) {
-        lim.min = tlim.min;
-      } else if (tlim.min < lim.min) {
-        lim.min = tlim.min;
+  if(axes->lim_fixed)lim=axes->lim;
+  else{
+    while(artist&&artist->is_limitable){
+      Limit tlim=artist->avt->get_limit(artist);
+      if (!isnan(tlim.min)) {
+        if (isnan(lim.min)) {
+          lim.min = tlim.min;
+        } else if (tlim.min < lim.min) {
+          lim.min = tlim.min;
+        }
       }
-    }
-    if (!isnan(tlim.max)) {
-      if (isnan(lim.max)) {
-        lim.max = tlim.max;
-      } else if (tlim.max > lim.max) {
-        lim.max = tlim.max;
+      if (!isnan(tlim.max)) {
+        if (isnan(lim.max)) {
+          lim.max = tlim.max;
+        } else if (tlim.max > lim.max) {
+          lim.max = tlim.max;
+        }
       }
+      artist=artist->next;
     }
-    artist=artist->next;
+    /* add offsetY to the limit */
+    if(vd.offsety!=0.f){
+      double diff=(lim.max-lim.min)*vd.offsety;
+      lim.min+=diff;
+      lim.max+=diff;
+    }
+    //update with Vd.scaley
+    float diff=lim.max-lim.min;
+    float to_mod=diff*vd.scaley/100.f/2.f;
+    lim.min+=to_mod;
+    lim.max-=to_mod;
+    axes->lim=lim;
+
   }
-  /* add offsetY to the limit */
-  if(vd.offsety!=0.f){
-    double diff=(lim.max-lim.min)*vd.offsety;
-    lim.min+=diff;
-    lim.max+=diff;
-  }
-  //update with Vd.scaley
-  float diff=lim.max-lim.min;
-  float to_mod=diff*vd.scaley/100.f/2.f;
-  lim.min+=to_mod;
-  lim.max-=to_mod;
-  axes->lim=lim;
 
   axes_set_ylabel_len(axes);//measure out label
   axes->w=axes->area->w/(vd.vlen);
@@ -73,7 +77,7 @@ static void axes_set_ylabel_len(Axes* axes)
 {
   if(!axes->artist_len)return;;
   Theme theme=axes->fig->theme;
-  Font font=axes->fig->fc->font;
+  Font font=*axes->fig->font;
   #define LEN 128
   char buf_[LEN]={0};
   char *buf=str_create(buf_,LEN);
@@ -118,7 +122,7 @@ static void axes_draw_ylabel(Axes* axes)
   area.w-=YLABEL_GAP;
 
   Theme theme=axes->fig->theme;
-  Font font=axes->fig->fc->font;
+  Font font=*axes->fig->font;
   size_t label_count=area.h/(theme.font_size+YLABEL_PADDING);
   if(label_count==0)return;
 
@@ -191,7 +195,7 @@ static void axes_draw_legend(Axes *axes)
 {
     if (axes->legend.lp == LEGEND_POSITION_NO_LEGEND)return;
     Theme theme=axes->fig->theme;
-    Font font=axes->fig->fc->font;
+    Font font=*axes->fig->font;
     Rect area = *axes->area;
     float startx = 0;
     float starty = 0;
@@ -241,4 +245,16 @@ void axes_show_legend(Axes* axes, LegendPosition lp)
 {
   ASSERT(axes);
   axes->legend.lp=lp;
+}
+
+
+void axes_set_ylim(Axes* axes,double min, double max)
+{
+  ASSERT(axes);
+  ASSERT(min!=max);
+  axes->lim=(Limit){
+    .min=min,
+    .max=max,
+  };
+  axes->lim_fixed=1;
 }

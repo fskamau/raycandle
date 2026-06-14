@@ -24,6 +24,7 @@ struct Vd{
   size_t vlen;
   size_t eff_vlen;
   size_t ulen;
+  size_t zoomx;  
   Vector2 velocity;
   Axes* aum;
   int wait_mouse_up;
@@ -44,7 +45,6 @@ struct Fconfig {
   NC *nc;
   char *font_path;
   ReadySignal* signal_initialized;
-  Font font;
   FigureState state;
   bool update;
   Rect* rects;

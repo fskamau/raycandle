@@ -17,6 +17,7 @@ Arena *arena_create(size_t bytes);
 void  *arena_alloc(Arena *arena, size_t bytes);
 void   arena_free(Arena *arena);
 void   arena_print(Arena *arena);
+void  arena_reset(Arena* arena);
 
 #ifdef ARENA_IMPLEMENTATION
 #define ARENA_ALIGNMENT (sizeof(void*))
@@ -50,24 +51,30 @@ void *arena_alloc(Arena *arena, size_t bytes) {
   return ptr;
  arena_alloc_error:{
     size_t rem=arena->cap-aligned_offset;
-    ARENA_ERROR("arena_alloc: Out of memory: needs %'zub more; (req %'zu cap (%'zub ~= %'.4fMb) free %'zu)\n",bytes-rem,bytes,arena->cap,(double)arena->cap/(1024*1024*1024), rem);
+    ARENA_ERROR("arena_alloc: Out of memory: needs %'zub more; req (%'zu ~=%'.4fMB) cap (%'zub ~= %'.4fMB) free %'zu)\n",bytes-rem,bytes,(double)bytes/(1024*1024),arena->cap,(double)arena->cap/(1024*1024), rem);
   }
 }
 
 void arena_free(Arena *arena) {
   if(!arena)ARENA_ERROR("null argument\n");
+  arena->offset=arena->cap=0;  
   free(arena);
 }
 
 void arena_print(Arena *arena) {
   if(!arena)ARENA_ERROR("null argument\n");
   double percent = ((double)arena->offset / (double)arena->cap) * 100.0;
-  printf("Arena(cap=%zu, used=%zu free=%zu, %%free=%.2f%%)\n", 
+  printf("Arena(cap=%'zu, used=%'zu free=%'zu, %%free=%.2f%%)\n", 
          arena->cap,
          arena->offset,
          arena->cap - arena->offset, 
          100.0 - percent);
 }
 
+void  arena_reset(Arena* arena)
+{
+  if(!arena)ARENA_ERROR("null argument\n");
+  arena->offset=0;
+}
 #endif // ARENA_IMPLEMENTATION
 #endif // _ARENA_H_

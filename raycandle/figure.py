@@ -51,7 +51,7 @@ class Collector:
         if diff := self.__data_names__.difference(df.columns):
             raise ValueError(f"missing column names {diff}")
         tuple(map(lambda x: x.set_data(df[x.__data_names__],start=start), self._artists))
-        self._fig.update()
+        # self._fig.update()
         
 
 class Figure:

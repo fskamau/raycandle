@@ -41,10 +41,12 @@ void nc_divide(NC *nc, Node *parent, size_t* ratios, size_t count, bool vertical
   float cum=0.f;
   float divr=1.f/count;
   Rect p_area=parent->area;
-  if(ratios)for(size_t i=0; i<count; ++i){
+  if(ratios){
+    for(size_t i=0; i<count; ++i){
       ASSERT(ratios[i]>0);
       total_count+=ratios[i];
-    }else
+    }
+  }
   for(size_t i=0; i<count; ++i){
     float r=ratios?(ratios[i]/total_count):divr;
     Rect* area=&parent->nodes[i].area;
@@ -162,4 +164,13 @@ void nc_set_area(NC* nc, Rect* dest, Rect area, float spacing)
             .h = (float)(y1 - y0)
         };
     }
+}
+
+
+Node* node_at(Node* parent, size_t index)
+{
+  ASSERT(parent);
+  ASSERTM(parent->count!=0,"no children\n");
+  ASSERTM(index<parent->count,"index error");
+  return parent->nodes+index;
 }
