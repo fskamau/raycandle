@@ -34,14 +34,15 @@ int main(){
 
   figure_set_view_data(figure,LEN,"%a/%d/%m %H:%M:%S",data,1);
 
+
   /* artist_create(figure->axes+1,ARTIST_TYPE_LINE,1.0,&RED,"more",&ldata); */
 
 
-  ldata=(LineData){.is_relative=1,
+  ldata=(LineData){
                    .is_splined=0,
-                   .data=(double[]){0,1,.5,.5}};
+                   .data=(double[]){1779298200.000000, 1779998800.000000,4540,4549}};
   
-  artist_create(figure->axes,ARTIST_TYPE_LINE,1.0,NULL,"other",&ldata);
+  artist_create(figure->axes,ARTIST_TYPE_LINE,10.0,NULL,"other",&ldata);
 
   
   

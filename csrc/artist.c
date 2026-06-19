@@ -82,13 +82,9 @@ static void  artist_line_init(Artist* artist)
   size_t len=axes->fig->fc->vd.len;
   Arena* arena=axes->fig->arena;
   assert(ldata->data);
-  if(ldata->is_splined)ASSERTM(!ldata->is_relative, "invalid line state\n");
-  if(ldata->is_relative){for(size_t i=0;i<4;++i)ASSERTM(ldata->data[i]>=0.f&&ldata->data[i]<=1.f,"range of relative line data is(0.f,1.0f)\n")};
-  if(ldata->is_relative)artist->is_limitable=false;
   LineData* pdata=arena_alloc(arena, sizeof(LineData));
-  pdata->is_relative=ldata->is_relative;
   pdata->is_splined=ldata->is_splined;
-  size_t tocp=sizeof(*ldata->data)*(ldata->is_relative?4:len);
+  size_t tocp=sizeof(*ldata->data)*(ldata->is_splined?len:4);
   pdata->data=arena_alloc(arena,tocp);
   memcpy(pdata->data,ldata->data,tocp);
   Color* colors=arena_alloc(arena,sizeof(Color));
@@ -160,7 +156,6 @@ static Limit artist_line_get_limit(Artist* artist)
   Vd vd=artist->axes->fig->fc->vd;
   LineData *l=artist->data;
   if(l->is_splined)  return get_lim(l->data+vd.start,vd.eff_vlen);
-  if(l->is_relative) return (Limit){.min=NAN,.max=NAN};
   return get_lim(l->data+2,2);
 }
 
@@ -187,20 +182,18 @@ static void  artist_line_draw(Artist* artist, Rect area)
   Limit destl=(Limit){.min=area.h+area.y,.max=area.y};
   if(ldata->is_splined){
     size_t rc=1;
-    data+=vd.start;
+    data+=vd.start;     
     for(size_t i=vd.start+1;i<vd.stop;++i,++rc){
       DrawLineEx((Vector2){axes->w*(rc-1)+area.x,scale_to_limitf(data[rc-1],axes->lim,destl)},
                  (Vector2){axes->w*rc+area.x,scale_to_limitf(data[rc],axes->lim,destl)},artist->thick,*artist->colors);
     }    
   }
-  else{   
-    double x[2]={0};
-    double y[2]={0};
-    Limit ylim=(ldata->is_relative)?(Limit){0.f,1.f}:axes->lim;
-    Limit xlim=(ldata->is_relative)?(Limit){0.f,1.f}:axes->fig->xlim;
-    scale_to_limit(data,x, 2, xlim,(Limit){area.x,area.x+area.w});
-    scale_to_limit(data+2, y, 2, ylim, destl);
-    DrawLineEx((Vector2){*x,*y},(Vector2){x[1],y[1]},artist->thick,*artist->colors);
+  else{
+    double temp[4];
+    memcpy(temp,data,4*sizeof(*temp));
+    scale_to_limit(temp+0,temp+0, 2, axes->fig->xlim,(Limit){area.x,area.x+area.w});
+    scale_to_limit(temp+2,temp+2, 2, axes->lim, destl);
+    DrawLineEx((Vector2){temp[0],temp[2]},(Vector2){temp[1],temp[3]},artist->thick,*artist->colors);
   }
 }
 

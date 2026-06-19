@@ -61,13 +61,10 @@ typedef enum   {
 
 /*
   if is_splined then data len is that set by figure_set_view_data
-  else:data len is double[4]
-    if is_relative then data is double[4] with {startx,endx, starty, endy} ranging from (0.f,1.f). e.g 0,1,0.5,0.5 will draw horizontal line
-    else normal limits will be applied
+  else:data len is double[4]  with {startx,endx, starty, endy}
  */
 typedef struct {
   int is_splined;
-  int is_relative;
   double* data;
 }LineData;
 
