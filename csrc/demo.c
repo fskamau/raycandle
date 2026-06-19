@@ -10,7 +10,7 @@
 int main(){
   Arena *arena=arena_create(1024*1024*1024);
   NC* nc=nc_create(1024*1024*1024);
-  nc_grid(nc,nc->root,2,1);
+  /* nc_grid(nc,nc->root,2,1); */
   Figure* figure=figure_createn(nc);
   /* figure_create(1,1); */
   
@@ -30,19 +30,22 @@ int main(){
 
   double *mym=arena_alloc(arena,sizeof(double)*LEN);
   memcpy(mym, data+LEN,sizeof(double)*LEN);
-  ldata=(LineData){.is_relative=0,
-                  .is_splined=1,
-                  .data=mym};
 
 
-  figure_set_view_data(figure,LEN,"%a/%d/%m %H:%M:%S",data,60);
+  figure_set_view_data(figure,LEN,"%a/%d/%m %H:%M:%S",data,1);
 
   /* artist_create(figure->axes+1,ARTIST_TYPE_LINE,1.0,&RED,"more",&ldata); */
 
+
+  ldata=(LineData){.is_relative=1,
+                   .is_splined=0,
+                   .data=(double[]){0,1,.5,.5}};
   
-  /* artist_create(figure->axes,ARTIST_TYPE_LINE,2.0,NULL,&ldata); */
-    
-  artist_create(figure->axes,ARTIST_TYPE_CANDLE,1.0,(Color[2]){GetColor(0x079981ff),GetColor(0xf23645ff)},NULL,data+LEN);
+  artist_create(figure->axes,ARTIST_TYPE_LINE,1.0,NULL,"other",&ldata);
+
+  
+  
+  artist_create(figure->axes,ARTIST_TYPE_CANDLE,1.0,(Color[2]){GetColor(0x079981ff),GetColor(0xf23645ff)},"candles",data+LEN);
 
     /* x->is_limitable=0; */
   

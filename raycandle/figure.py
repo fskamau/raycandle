@@ -115,7 +115,7 @@ class Figure:
             self._wait_init()
             return
         self._show(window_title, width, height, fps)
-        self._api.lib.figure_wait_initialized()
+
 
     @window_not_closed
     def show_cursors(self) -> None:

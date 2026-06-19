@@ -25,7 +25,8 @@ void axes_update_ylim(Axes* axes)
   ASSERT(vd.vlen!=0);
   if(axes->lim_fixed)lim=axes->lim;
   else{
-    while(artist&&artist->is_limitable){
+    while(artist){
+      if(!artist->is_limitable)goto axes_update_ylim_continue;
       Limit tlim=artist->avt->get_limit(artist);
       if (!isnan(tlim.min)) {
         if (isnan(lim.min)) {
@@ -41,6 +42,7 @@ void axes_update_ylim(Axes* axes)
           lim.max = tlim.max;
         }
       }
+    axes_update_ylim_continue:
       artist=artist->next;
     }
     /* add offsetY to the limit */

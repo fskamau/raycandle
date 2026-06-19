@@ -82,7 +82,7 @@ static void  artist_line_init(Artist* artist)
   size_t len=axes->fig->fc->vd.len;
   Arena* arena=axes->fig->arena;
   assert(ldata->data);
-  if(ldata->is_splined)ASSERT(!ldata->is_relative && "invalid line state\n");
+  if(ldata->is_splined)ASSERTM(!ldata->is_relative, "invalid line state\n");
   if(ldata->is_relative){for(size_t i=0;i<4;++i)ASSERTM(ldata->data[i]>=0.f&&ldata->data[i]<=1.f,"range of relative line data is(0.f,1.0f)\n")};
   if(ldata->is_relative)artist->is_limitable=false;
   LineData* pdata=arena_alloc(arena, sizeof(LineData));

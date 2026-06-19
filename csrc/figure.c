@@ -330,7 +330,7 @@ static void figure_mode_bar_draw(Figure *figure)
       Limit dest=(Limit){vd.raw_start,vd.raw_start+vd.vlen};
       float index=scale_to_limitf(GetMouseX(),src,dest);
       if(index>=0.f && index<=vd.len){
-        str_append(buf,"showing [start:%zu at:%zu %'zu/%'zu] ",vd.start,(size_t)index,vd.eff_vlen,vd.len);
+        str_append(buf,"start:%'zu at:%'zu [showing %'zu current=%'zu of %'zu] ",vd.start,(size_t)index,vd.vlen,vd.eff_vlen,vd.len);
         size_t epoch= fc->xdata[(int)index]+(index-floor(index))*fc->timeframe;
         epoch2strftime(epoch,buf, fc->xformat);
       }
