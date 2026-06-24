@@ -18,28 +18,6 @@ class Axes:
     def __repr__(self) -> str:
         return f"Axes[{self._index}])"
 
-    @final
-    @window_not_closed
-    def vline(self, xpos: float, **kwargs) -> None:
-        """
-        draws a vertical line perpendicular to `xpos`
-        """
-        if "is_splined" in kwargs or "is_relative" in kwargs:
-            raise TypeError("line type cannot be set")
-        data=[ xpos, xpos,0.0,1.0]
-        self.plot(data, is_splined=False, is_relative=True, **kwargs)
-
-    @final
-    @window_not_closed
-    def hline(self, ypos: float, **kwargs) -> None:
-        """
-        draws a horizontal line perpendicular to `ypos`
-        """
-        if "is_splined" in kwargs or "is_relative" in kwargs:
-            raise TypeError("line type cannot be set")
-        data=[0.0,1.0, ypos, ypos]
-        self.plot(data, is_splined=False, is_relative=True, **kwargs)
-
     @window_not_closed
     def plot(self, artist: Union[Type[Artist], pd.Series], **kwargs) -> Type[RC_Artist]:
         """

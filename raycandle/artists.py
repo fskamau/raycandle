@@ -30,7 +30,6 @@ class Line(Artist):
     def _get_create_args(self) -> tuple[Any]:
         line_data = self._api.ffi.new("LineData*")
         line_data.is_splined = self.is_splined
-        line_data.is_relative = self.is_relative
         line_data.data=self._pdata = self._api.ffi.cast("double*",self.ydata.ctypes.data)
         return (
             ArtistType.LINE,

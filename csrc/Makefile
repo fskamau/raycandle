@@ -10,7 +10,7 @@ ASSETS_FOLDER = ./assets
 SOURCES = utils.c str.c figure.c node.c axes.c ready_signal.c artist.c
 OBJECTS = $(patsubst %.c,$(TARGET_FOLDER)/%.o, $(SOURCES))
 
-all: $(TARGET_FOLDER)/libraycandle.so.1  link_to_local
+all: $(TARGET_FOLDER)/libraycandle.so.1  link_to_local 
 
 link_to_local: $(TARGET_FOLDER)/libraycandle.so.1
 	$(shell [ ! -e $(TARGET_FOLDER)/libraycandle.so ] && ln -sr $(TARGET_FOLDER)/libraycandle.so.1  $(TARGET_FOLDER)/libraycandle.so)
