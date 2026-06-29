@@ -75,7 +75,7 @@ Figure* figure_create(size_t rows, size_t cols)
   Figure* figure=figure_create_();
   Fconfig* fc=figure->fc;
   fc->nc=nc_create(NODES_ARENA_SIZE);
-  if(rows!=1&&cols!=1)//to allow figure_show to trigger
+  if(!(rows==1&&cols==1))//to allow figure_show to trigger
     nc_grid(fc->nc, fc->nc->root, rows,cols);
   figure->axes_count=nc_compile(fc->nc);
   figure_compile(figure); //nodes & axes
@@ -116,6 +116,8 @@ void raylib_init(Figure *figure,char *window_title,int width, int height, int fp
   figure_axes_init(figure);
   figure->fc->state=FIGURE_STATE_RUNNING;
   ready_signal_set(figure->fc->signal_initialized);
+  figure->force_update=true;//trigger updates the first
+  
 }
 
 void figure_wait_for_InitWindow(Figure* figure)
@@ -169,7 +171,6 @@ void figure_show(Figure* figure, char* window_title, int width, int height, int 
   Fconfig* fc=figure->fc;
   ASSERTM(fc->state==FIGURE_STATE_CREATED,"figure_show called again\n");
   raylib_init(figure,window_title,width,height,fps);//figure state will now be FIGURE_STATE_RUUNING
-  figure->force_update=true;//trigger updates the first
   while (!WindowShouldClose()) {
     raylib_init_loop(figure);
     BeginDrawing();
@@ -284,6 +285,7 @@ static void load_font(Figure* figure)
 static void figure_update_xlim(Figure* figure)
 {
   Fconfig *fc=figure->fc;
+  if(!fc->xdata)return;
   figure->xlim=get_lim(fc->xdata+fc->vd.start,fc->vd.eff_vlen);
 }
 
@@ -291,20 +293,20 @@ static void figure_update_xlim(Figure* figure)
 static void insert_bar(bool top, Rect* src, Rect* dest, size_t height, float spacing)
 {
   ASSERT(src&&dest);
-    const float lw = 1.0f;
-    dest->x = src->x + spacing + lw;
-    dest->w = src->w - (spacing * 2.0f) - (lw * 2.0f);
-    dest->h = (float)height;
-    if (top) {
-        dest->y = src->y + lw;
-        float total_consumed = (float)height + spacing + lw;
-        src->y += total_consumed;
-        src->h -= total_consumed;
-    } else {
-        dest->y = (src->y + src->h) - (float)height - lw;
-        float total_consumed = (float)height + spacing + lw;
-        src->h -= total_consumed;
-    }
+  const float lw = 1.0f;
+  dest->x = src->x + spacing + lw;
+  dest->w = src->w - (spacing * 2.0f) - (lw * 2.0f);
+  dest->h = (float)height;
+  if (top) {
+    dest->y = src->y + lw;
+    float total_consumed = (float)height + spacing + lw;
+    src->y += total_consumed;
+    src->h -= total_consumed;
+  } else {
+    dest->y = (src->y + src->h) - (float)height - lw;
+    float total_consumed = (float)height + spacing + lw;
+    src->h -= total_consumed;
+  }
 }
 
 
@@ -322,7 +324,7 @@ static void figure_mode_bar_draw(Figure *figure)
   str_append(buf,"fps=%d ",GetFPS());
 
   Axes *aum=get_axes_under_mouse(figure);
-  if(aum && aum->artist_len){//TODO: FIX INDEXING
+  if(fc->xdata && aum && aum->artist_len){//TODO: FIX INDEXING
     float mx=(GetMouseX()-aum->area->x)/aum->area->w;
     float index=mx*vd.eff_vlen+vd.start;
     if(index>=0.f && index<vd.len){
@@ -338,11 +340,14 @@ static void figure_mode_bar_draw(Figure *figure)
   }
   float x=align_text(figure->font,buf,area.w, theme.font_size,theme.spacing, ALIGNMENT_LEFT);
   DrawTextEx(*figure->font,buf,(Vector2){x+area.x,area.y+1},theme.font_size,theme.font_spacing,theme.fg);
-  str_clear(buf);
-  str_append(buf,"%s","xindex[-1]=");
-  epoch2strftime(fc->xdata[vd.len-1],buf, fc->xformat);
-  x=align_text(figure->font,buf,area.w, theme.font_size,theme.spacing, ALIGNMENT_RIGHT);
-  DrawTextEx(*figure->font,buf,(Vector2){x+area.x,area.y+1},theme.font_size,theme.font_spacing,theme.fg);
+  if(fc->xdata){
+    str_clear(buf);
+    str_append(buf,"%s","xindex[-1]=");
+    epoch2strftime(fc->xdata[vd.len-1],buf, fc->xformat);
+    x=align_text(figure->font,buf,area.w, theme.font_size,theme.spacing, ALIGNMENT_RIGHT);
+    DrawTextEx(*figure->font,buf,(Vector2){x+area.x,area.y+1},theme.font_size,theme.font_spacing,theme.fg);
+  }
+
 }
 
 static void figure_handle_inputs(Figure* figure)
@@ -355,8 +360,7 @@ static void figure_handle_inputs(Figure* figure)
   Axes* aum=get_axes_under_mouse(figure);
   int has_artists=aum?aum->artist_len>0:0;
   int mbd=IsMouseButtonDown(MOUSE_BUTTON_LEFT);
-
-
+  
   if(vd.aum!=aum){
     vd.aum=aum;
     vd.wait_mouse_up=true;
@@ -388,7 +392,7 @@ static void figure_handle_inputs(Figure* figure)
   }
 
   //dragging with mouse vert
-  if(velocity->y != 0.f && md.y != 0.f &&has_artists &&mbd){;
+  if(!vd.wait_mouse_up && velocity->y != 0.f && md.y != 0.f &&has_artists &&mbd){;
     vd.offsety-=velocity->y;
     if(fabs(vd.offsety)>vd.max_offset)vd.offsety=vd.offsety>0?vd.max_offset:-vd.max_offset;
     need_update=1;
@@ -408,7 +412,7 @@ static void figure_handle_inputs(Figure* figure)
     if(wm.y!=0.f){
       vd.zoomx+=1;
       long long vlen=vd.vlen+vd.zoomx*-wm.y;
-      if(vlen<MINIMUM_VLEN)vd.zoomx=0;            
+      if(vd.eff_vlen<MINIMUM_VLEN)vd.zoomx=0;   /* TODO: fix vd.eff_vlen moving past vd.vlen*/
       size_t pvlen=vd.vlen;
       vd.vlen=MIN(MAX(MINIMUM_VLEN,vlen),vd.len);
       vlen=vd.vlen-pvlen;
@@ -439,7 +443,7 @@ static void figure_handle_inputs(Figure* figure)
     ASSERT(vd.len>=vd.stop);
     if(l<vd.len)vd.stop+=1;
     if(l<vd.len-1)vd.stop+=1;
-    if(vd.offsetx>1.f)vd.offsetx=vd.raw_start-floor(vd.raw_start);
+    /* if(vd.offsetx>1.f)vd.offsetx=vd.raw_start-floor(vd.raw_start); */
   }
   if(need_update)figure->force_update=need_update;
   fc->vd=vd;
@@ -468,7 +472,7 @@ static void  figure_draw_cursors(Figure *figure)
   double mreal=scale_to_limitf(mp.y, (Limit){area.y+area.h,area.y},aum->lim);
   float px=scale_to_limitf(mp.x, (Limit){area.x,area.x+area.w},(Limit){0.f, 1.f});
  Color c=Fade(theme.fg,0.5);
-  for(size_t i=0;i<figure->axes_count;++i){      
+  for(size_t i=0;i<figure->axes_count;++i){
     Axes axes=figure->axes[i];
     if(!axes.artist_len)continue;
     Rect areax=*axes.area;

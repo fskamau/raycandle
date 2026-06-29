@@ -1,6 +1,6 @@
 CC = gcc
 
-CFLAGS = -Wextra -Wall  -fPIC -std=c99  $(shell pkg-config --cflags raylib)
+CFLAGS = -Wextra -Wall  -fPIC -std=c99 -ggdb $(shell pkg-config --cflags raylib)
 LDFLAGS = $(shell pkg-config --libs raylib 2>/dev/null || echo "-L/usr/local/lib -lraylib") -lm -lpthread -lGL
 
 TARGET_FOLDER = ./build
