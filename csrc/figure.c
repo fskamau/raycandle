@@ -17,7 +17,7 @@
 #define FG_DEFAULT GetColor(0x8b8ba7ff)
 #define VIEWPORT_INITIAL_LEN 120
 
-#define DEFAULT_VELOCITY_DECAY 0.5f
+#define DEFAULT_VELOCITY_DECAY 0.6f
 #define MINIMUM_VELOCITY 0.005f //reset to zero if lower than this to avoid flickering
 #define MAX_EMPTY_OFFSET 0.75f
 
@@ -140,7 +140,6 @@ void raylib_init_loop(Figure* figure)
   // Q -> exit
   SetExitKey(KEY_Q);
   if(IsWindowResized())figure->force_update=1;
-
 }
 
 void figure_update(Figure* figure){
@@ -165,6 +164,40 @@ void figure_update(Figure* figure){
   figure->force_update=false;
 }
 
+void draw_slider(int *value, float min, float max, float x, float y, float w,
+                 Font font, Theme theme) {
+  float h = 20;
+  Vector2 m = GetMousePosition();
+  Rectangle bounds = (Rectangle){x, y, w, h};
+  bool hover = CheckCollisionPointRec(m, bounds);
+  float t = (*value - min) / (max - min);
+  if(*value<min)*value=min;
+  float knobX = x + t * w;
+  if (!hover) {
+    DrawRectangleLinesEx(bounds, 1, Fade(DARKGRAY,0.5));
+  } else {
+    DrawRectangleLinesEx(bounds, 1, LIME);
+
+    if (IsMouseButtonDown(MOUSE_LEFT_BUTTON)) {
+      float nt = (m.x - x) / w;
+      if (nt < 0)
+        nt = 0;
+      if (nt > 1)
+        nt = 1;
+
+      *value = min + nt * (max - min);
+      knobX = x + nt * w;
+    }
+  }
+  DrawRectangle((int)x, (int)(y + h / 2 - 2), (int)w, 1, YELLOW);
+  DrawLine((int)knobX, (int)y+0.1*h, (int)knobX, (int)(y + h*0.8), YELLOW);
+  char buf[32];
+  snprintf(buf, sizeof(buf), "%d", *value);
+  Vector2 size = MeasureTextEx(font, buf, theme.font_size, theme.font_spacing);
+  float tx = x + w + 10;
+  float ty = y + (h - size.y) * 0.5f;
+  DrawTextEx(font, buf, (Vector2){tx, ty}, theme.font_size, theme.font_spacing,theme.fg);
+}
 
 void figure_show(Figure* figure, char* window_title, int width, int height, int fps)
 {
@@ -176,7 +209,30 @@ void figure_show(Figure* figure, char* window_title, int width, int height, int 
     BeginDrawing();
     ClearBackground(figure->theme.bg);
     figure_update(figure);
+
+int slider_count = sizeof(figure->x) / sizeof(figure->x[0]);
+Rect area = *figure->axes[figure->axes_count - 1].area;
+
+float padding = 10.0f;
+float usable_h = area.h - 2 * padding;
+float step = usable_h / slider_count;
+
+for (int i = 0; i < slider_count; i++) {
+    float y = area.y + padding + i * step;
+
+    draw_slider(
+        figure->x + i,
+        1.0f,
+        100.0f,
+        area.x + 30,
+        y,
+        area.w - 100,
+        *figure->font,
+        figure->theme
+    );
+}
     EndDrawing();
+    
   }
   CloseWindow();
 }
@@ -363,7 +419,7 @@ static void figure_handle_inputs(Figure* figure)
   
   if(vd.aum!=aum){
     vd.aum=aum;
-    vd.wait_mouse_up=true;
+    vd.wait_mouse_up=true;    
   }
   if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)){
     vd.wait_mouse_up=false;
@@ -375,14 +431,16 @@ static void figure_handle_inputs(Figure* figure)
   }
 
   //dragging with mouse horiz
-  if(velocity->x!=0.f){
+  if(velocity->x!=0.f && aum&&aum->artist_len){
     double max_offset=vd.vlen*vd.max_offset;
     vd.raw_start=fmin(vd.len+max_offset-vd.vlen,fmax(-max_offset,(vd.raw_start+velocity->x*vd.vlen)));
-    velocity->x*=vd.decay;
-    if(fabsf(velocity->x)<MINIMUM_VELOCITY)velocity->x=0.f;
     need_update=1;
   }
 
+  if(velocity->x!=0.f){
+    velocity->x*=vd.decay;
+    if(fabsf(velocity->x)<MINIMUM_VELOCITY)velocity->x=0.f;
+  }
   //fast move horiz with ARROW_(LEFT/RIGHT)
   int arrow_key=(IsKeyPressed(KEY_LEFT)||IsKeyDown(KEY_LEFT))?-1.0:
     (IsKeyPressed(KEY_RIGHT)||IsKeyDown(KEY_RIGHT))?1.0:0;
@@ -501,3 +559,4 @@ static void figure_axes_init(Figure* figure)
     axes->legend.llen=MeasureTextEx(font, buf, theme.font_size,theme.font_spacing).x;
   }
 }
+

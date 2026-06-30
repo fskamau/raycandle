@@ -45,3 +45,10 @@ void ready_signal_destroy(ReadySignal *signal) {
   pthread_mutex_destroy(&signal->lock);
   pthread_cond_destroy(&signal->cond);
 }
+
+void ready_signal_clear(ReadySignal *signal)
+{
+  pthread_mutex_lock(&signal->lock);
+  signal->ready = 0;
+  pthread_mutex_unlock(&signal->lock);
+}

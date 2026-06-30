@@ -127,6 +127,7 @@ struct Figure {
   Limit xlim;
   size_t axes_count;
   Font* font;
+  int x[10];
 };
 
 double scale_to_limitf(double val, Limit src, Limit dest);
@@ -166,6 +167,5 @@ void figure_show_legends(Figure* figure, LegendPosition lp);
 void raylib_init(Figure *figure,char *window_title,int width, int height, int fps); //calls initWindow
 void raylib_init_loop(Figure* figure); //call every loop to set up keyboard events
 void figure_update(Figure* figure); //call every loo[ to update the figure e.g axes etc
-
 
 #endif //__RAYCANDLE_H__
