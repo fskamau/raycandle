@@ -22,7 +22,7 @@ void axes_update_ylim(Axes* axes)
   Limit lim=(Limit){NAN,NAN};
   Vd vd=axes->fig->fc->vd;
 
-  ASSERT(vd.vlen!=0);
+  ASSERT(vd.rvlen!=0);
   if(axes->lim_fixed)lim=axes->lim;
   else{
     while(artist){
@@ -51,17 +51,15 @@ void axes_update_ylim(Axes* axes)
       lim.min+=diff;
       lim.max+=diff;
     }
-    //update with Vd.scaley
     float diff=lim.max-lim.min;
-    float to_mod=diff*vd.scaley/100.f/2.f;
+    float to_mod=diff*vd.zoom.y/100.f/2.f;
     lim.min+=to_mod;
     lim.max-=to_mod;
     axes->lim=lim;
-
   }
 
   axes_set_ylabel_len(axes);//measure out label
-  axes->w=axes->area->w/(vd.vlen);
+  axes->w=axes->area->w/(vd.rvlen);
 }
 
 
@@ -176,10 +174,10 @@ void axes_draw(Axes* axes)
 
   BeginScissorMode(NODE_RECT_UNWRAP(area));
   {
-    double of=vd.offsetx;
-    if(of>0.f) of-= floor(of);
-    area.x-=of*axes->w;
-
+    float or=vd.offsetx/vd.rvlen;   
+    if (vd.offsetx<0.f)area.x-=or*area.w;
+    if (vd.offsetx>0.f && vd.offsetx<1.f)area.w+=or*area.w;
+    /* DrawRectangleLines(NODE_RECT_UNWRAP(area),axes->fig->theme.fg); */
     artist=axes->artist;
     while(artist){
       artist->avt->draw(artist,area);

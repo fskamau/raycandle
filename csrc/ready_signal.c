@@ -3,9 +3,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "arena.h"
+#include <pthread.h>
 
-
-#define RS_ERROR(fmt, ...) do{                                       \
+#define RS_ERROR(fmt, ...) do{                                          \
     fprintf(stderr,"%s:%d: [SIGNAL ERROR] " fmt ,__FILE__, __LINE__, ##__VA_ARGS__); \
     exit(1);}while (0)                                           
 
@@ -27,7 +27,7 @@ ReadySignal *ready_signal_create(Arena* arena)
 void ready_signal_set(ReadySignal *signal) {
   pthread_mutex_lock(&signal->lock);
   signal->ready = 1;
-  pthread_cond_signal(&signal->cond);
+  pthread_cond_broadcast(&signal->cond);
   pthread_mutex_unlock(&signal->lock);
 }
 

@@ -155,7 +155,7 @@ static Limit artist_line_get_limit(Artist* artist)
 {
   Vd vd=artist->axes->fig->fc->vd;
   LineData *l=artist->data;
-  if(l->is_splined)  return get_lim(l->data+vd.start,vd.eff_vlen);
+  if(l->is_splined)  return get_lim(l->data+vd.start,vd.vlen);
   return get_lim(l->data+2,2);
 }
 
@@ -164,8 +164,8 @@ static Limit artist_candle_get_limit(Artist* artist){
   Vd vd=axes->fig->fc->vd;
   size_t len=axes->fig->fc->vd.len;
   double *data=artist->data;
-  Limit l1=get_lim(data+(len*1)+vd.start,vd.eff_vlen);//o,[h],l,c
-  Limit l2=get_lim(data+(len*2)+vd.start,vd.eff_vlen);//o,h,[l],c
+  Limit l1=get_lim(data+(len*1)+vd.start,vd.vlen);//o,[h],l,c
+  Limit l2=get_lim(data+(len*2)+vd.start,vd.vlen);//o,h,[l],c
   double array_lim[4]={l1.min,l1.max,l2.min,l2.max};
   Limit lim=get_lim(array_lim,4);
   return lim;
@@ -183,7 +183,7 @@ static void  artist_line_draw(Artist* artist, Rect area)
   if(ldata->is_splined){
     size_t rc=1;
     data+=vd.start;     
-    for(size_t i=vd.start+1;i<vd.stop;++i,++rc){
+    for(size_t i=1;i<vd.draw_len;++i,++rc){
       DrawLineEx((Vector2){axes->w*(rc-1)+area.x,scale_to_limitf(data[rc-1],axes->lim,destl)},
                  (Vector2){axes->w*rc+area.x,scale_to_limitf(data[rc],axes->lim,destl)},artist->thick,*artist->colors);
     }    
@@ -205,7 +205,7 @@ static void  artist_candle_draw(Artist* artist, Rect area)
   float w_use_ratio=0.6;
   float w_use=w_use_ratio*axes->w;
   size_t rc=0;
-  for(size_t i=vd.start;i<vd.stop;++i,++rc){
+  for(size_t i=vd.start;i<vd.start+vd.draw_len;++i,++rc){
     double cl[4]={
       data[vd.len*0+i],
       data[vd.len*1+i],

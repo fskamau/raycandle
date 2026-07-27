@@ -39,7 +39,6 @@ typedef struct {
 #define RColor Color
 
 typedef RColor Color;
-
 typedef void Font;
 
 
@@ -121,12 +120,13 @@ struct Figure {
   Arena* arena;
   char* title;
   Theme theme;
-  bool force_update;
   Fconfig* fc;
   Axes* axes;
   Limit xlim;
   size_t axes_count;
   Font* font;
+  int redraw_count;
+  int redraw_modebar;
   int x[10];
 };
 

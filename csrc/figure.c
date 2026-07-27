@@ -17,15 +17,11 @@
 #define FG_DEFAULT GetColor(0x8b8ba7ff)
 #define VIEWPORT_INITIAL_LEN 120
 
-#define DEFAULT_VELOCITY_DECAY 0.6f
-#define MINIMUM_VELOCITY 0.005f //reset to zero if lower than this to avoid flickering
-#define MAX_EMPTY_OFFSET 0.75f
 
 #define MINIMUM_VLEN 2 //could be 1 but limit would be 0
 
 #define MAX_ZOOMY 90.0
-#define ZOOMY_SCALE 20.0
-#define DEFAULT_ZOOMY -5.0
+#define ZOOMY_SCALE 5.0
 
 #define ARROW_KEYS_SCALE 0.2
 
@@ -37,8 +33,17 @@
       .spacing=2,                               \
       }
 
-
 #define AXES_YLABEL_MAX_LEN 128
+#define MAX_OFFSETX 0.9
+
+#define PANX_DECAY 0.6f
+#define MINIMUM_PANX 0.05f
+#define MAX_PAN_Y 0.5
+#define MAX_PAN_X 0.9
+
+#define ZOOMX_DECAY 0.5
+#define MINIMUM_ZOOMX 0.1
+#define ZOOMX_USE 0.1
 
 static void figure_compile(Figure* figure);
 static void figure_create_axes(Figure *figure);
@@ -63,9 +68,6 @@ static Figure* figure_create_()
   memset(figure->fc,0, sizeof(Fconfig));
   figure->fc->mode_bar.is_visible=1;
   figure->fc->signal_initialized=ready_signal_create(arena);
-  figure->fc->vd.decay=DEFAULT_VELOCITY_DECAY;
-  figure->fc->vd.max_offset=MAX_EMPTY_OFFSET;
-  figure->fc->vd.scaley=DEFAULT_ZOOMY;
   figure->arena=arena;
   return figure;
 }
@@ -100,7 +102,7 @@ void figure_set_title(Figure* figure, char *title)
   str_clear(figure->title);
   str_append(figure->title, "%s",title);
   figure->fc->title_bar.is_visible=true;
-  figure->force_update=true;
+  figure->redraw_count++;
 }
 
 
@@ -116,8 +118,7 @@ void raylib_init(Figure *figure,char *window_title,int width, int height, int fp
   figure_axes_init(figure);
   figure->fc->state=FIGURE_STATE_RUNNING;
   ready_signal_set(figure->fc->signal_initialized);
-  figure->force_update=true;//trigger updates the first
-  
+  figure->redraw_count++;
 }
 
 void figure_wait_for_InitWindow(Figure* figure)
@@ -139,8 +140,9 @@ void raylib_init_loop(Figure* figure)
   }
   // Q -> exit
   SetExitKey(KEY_Q);
-  if(IsWindowResized())figure->force_update=1;
+  if(IsWindowResized())figure->redraw_count++;
 }
+
 
 void figure_update(Figure* figure){
   Fconfig *fc=figure->fc;
@@ -150,18 +152,22 @@ void figure_update(Figure* figure){
   if(fc->title_bar.is_visible)insert_bar(1, &area,&fc->title_bar.area, figure->theme.font_size,figure->theme.spacing);
   if(fc->mode_bar.is_visible)insert_bar(0, &area,&fc->mode_bar.area, figure->theme.font_size,figure->theme.spacing);
   figure_handle_inputs(figure);
-  if(figure->force_update){
-    nc_set_area(nc,figure->fc->rects,area,spacing);
-    figure_update_xlim(figure);
+  if(figure->redraw_count||figure->redraw_modebar){
+    ClearBackground(figure->theme.bg);
+    if(figure->redraw_count){
+      nc_set_area(nc,figure->fc->rects,area,spacing);
+      figure_update_xlim(figure);
+    }
+    for(size_t i=0;i<figure->axes_count;++i){
+      if(figure->redraw_count)axes_update_ylim(figure->axes+i);
+      axes_draw(figure->axes+i);
+    }
+    figure_draw_cursors(figure);
+    figure_draw_title(figure);
+    if(figure->redraw_count)figure->redraw_count--;
+    if(figure->redraw_modebar)figure->redraw_modebar--;
   }
-  for(size_t i=0;i<figure->axes_count;++i){
-    if(figure->force_update)axes_update_ylim(figure->axes+i);
-    axes_draw(figure->axes+i);
-  }
-  figure_draw_cursors(figure);
-  figure_draw_title(figure);
   figure_mode_bar_draw(figure);
-  figure->force_update=false;
 }
 
 void draw_slider(int *value, float min, float max, float x, float y, float w,
@@ -207,34 +213,35 @@ void figure_show(Figure* figure, char* window_title, int width, int height, int 
   while (!WindowShouldClose()) {
     raylib_init_loop(figure);
     BeginDrawing();
-    ClearBackground(figure->theme.bg);
+    /* ClearBackground(figure->theme.bg); */
     figure_update(figure);
-
-int slider_count = sizeof(figure->x) / sizeof(figure->x[0]);
-Rect area = *figure->axes[figure->axes_count - 1].area;
-
-float padding = 10.0f;
-float usable_h = area.h - 2 * padding;
-float step = usable_h / slider_count;
-
-for (int i = 0; i < slider_count; i++) {
-    float y = area.y + padding + i * step;
-
-    draw_slider(
-        figure->x + i,
-        1.0f,
-        100.0f,
-        area.x + 30,
-        y,
-        area.w - 100,
-        *figure->font,
-        figure->theme
-    );
-}
+    {
+      int slider_count = sizeof(figure->x) / sizeof(figure->x[0]);
+      if(figure->x[slider_count-1]){
+        Rect area = *figure->axes[figure->axes_count - 1].area;
+        float padding = 10.0f;
+        float usable_h = area.h - 2 * padding;
+        float step = usable_h / slider_count;
+        for (int i = 0; i < slider_count; i++) {
+          float y = area.y + padding + i * step;
+          draw_slider(
+                      figure->x + i,
+                      1.0f,
+                      100.0f,
+                      area.x + 30,
+                      y,
+                      area.w - 100,
+                      *figure->font,
+                      figure->theme
+                      );
+        }
+      }
+    }
     EndDrawing();
     
   }
   CloseWindow();
+  fc->state=FIGURE_STATE_STOPPED;
 }
 
 void figure_set_theme(Figure* figure, Theme theme)
@@ -247,7 +254,7 @@ void figure_set_theme(Figure* figure, Theme theme)
   figure->fc->font_path=str_createf("%s",theme.font_path);
   theme.font_path=NULL;
   figure->theme=theme;
-  figure->force_update=true;
+  figure->redraw_count++;
 }
 
 void figure_set_view_data(Figure* figure, size_t len, char *xformat, double *xdata, size_t timeframe)
@@ -258,10 +265,10 @@ void figure_set_view_data(Figure* figure, size_t len, char *xformat, double *xda
   ASSERT(xformat);
   ASSERT(timeframe!=0);
   Fconfig* fc=figure->fc;
-  ASSERTM(!fc->vd.len,"view data can only be called once. use figure_update_xdata\n");
+  ASSERTM(!fc->vd.len,"view data can only be called once. use update_xdata\n");
   fc->vd.len=len;
-  fc->vd.vlen=MIN(VIEWPORT_INITIAL_LEN,len);
-  fc->vd.stop=fc->vd.vlen;
+  fc->vd.rvlen=fc->vd.vlen=MIN(VIEWPORT_INITIAL_LEN,len);
+  fc->vd.zoom.y=-5;
   fc->timeframe=timeframe;
   fc->xdata=arena_alloc(figure->arena,sizeof(*fc->xdata)*len); //always alloc since update_xdata or update_xdatar maybe called elsewhere
   memcpy((fc->xdata=arena_alloc(figure->arena,sizeof(*fc->xdata)*len)),xdata,sizeof(*fc->xdata)*len);
@@ -342,7 +349,7 @@ static void figure_update_xlim(Figure* figure)
 {
   Fconfig *fc=figure->fc;
   if(!fc->xdata)return;
-  figure->xlim=get_lim(fc->xdata+fc->vd.start,fc->vd.eff_vlen);
+  figure->xlim=get_lim(fc->xdata+fc->vd.start,fc->vd.rvlen);
 }
 
 
@@ -371,27 +378,22 @@ static void figure_mode_bar_draw(Figure *figure)
   Fconfig *fc=figure->fc;
   if(!fc->mode_bar.is_visible)return;
   Rect area=fc->mode_bar.area;
+  Theme theme=figure->theme;
+  DrawRectangle(NODE_RECT_UNWRAP(area),theme.bg);
   Vd vd=fc->vd;
 #define LEN 256
   char buf_[LEN]={0};
   char* buf=str_create(buf_,LEN);
-  Theme theme=figure->theme;
   str_clear(buf);
   str_append(buf,"fps=%d ",GetFPS());
-
   Axes *aum=get_axes_under_mouse(figure);
-  if(fc->xdata && aum && aum->artist_len){//TODO: FIX INDEXING
+  if(fc->xdata && aum && aum->artist_len){
     float mx=(GetMouseX()-aum->area->x)/aum->area->w;
-    float index=mx*vd.eff_vlen+vd.start;
+    float index=mx*vd.rvlen+vd.start+fmin(vd.offsetx,0.f);
     if(index>=0.f && index<vd.len){
-      Limit src=(Limit){aum->area->x,aum->area->x+aum->area->w};
-      Limit dest=(Limit){vd.raw_start,vd.raw_start+vd.vlen};
-      float index=scale_to_limitf(GetMouseX(),src,dest);
-      if(index>=0.f && index<=vd.len){
-        str_append(buf,"start:%'zu at:%'zu [showing %'zu current=%'zu of %'zu] ",vd.start,(size_t)index,vd.vlen,vd.eff_vlen,vd.len);
-        size_t epoch= fc->xdata[(int)index]+(index-floor(index))*fc->timeframe;
-        epoch2strftime(epoch,buf, fc->xformat);
-      }
+      str_append(buf,"{start:'%'zu',at:'%'zu',showing:'%'zu', all:'%'zu'} ",vd.start,(size_t)index,vd.vlen,vd.len);
+      size_t epoch= fc->xdata[(int)index]+(index-floor(index))*fc->timeframe;
+      epoch2strftime(epoch,buf, fc->xformat);
     }
   }
   float x=align_text(figure->font,buf,area.w, theme.font_size,theme.spacing, ALIGNMENT_LEFT);
@@ -410,100 +412,105 @@ static void figure_handle_inputs(Figure* figure)
 {
   Fconfig *fc=figure->fc;
   Vd vd=fc->vd;
-  Vector2 *velocity=&vd.velocity;
-  int need_update=0;
   Vector2 md=GetMouseDelta();
   Axes* aum=get_axes_under_mouse(figure);
   int has_artists=aum?aum->artist_len>0:0;
   int mbd=IsMouseButtonDown(MOUSE_BUTTON_LEFT);
+  int need_update=0;
+  figure->redraw_modebar+=(int)(md.x!=0.f|| md.y!=0);
   
   if(vd.aum!=aum){
     vd.aum=aum;
-    vd.wait_mouse_up=true;    
+    vd.wait_mouse_up=true;
   }
   if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)){
     vd.wait_mouse_up=false;
-    *velocity=(Vector2){0,0};
+    vd.panx_velocity=0;
   }
-  if(!vd.wait_mouse_up && aum && mbd){
-    if(fabsf(md.x)>fabsf(md.y)) velocity->x+=(-md.x/aum->area->w);
-    if(fabsf(md.y)>fabsf(md.x)) velocity->y=(-md.y/aum->area->h);
+  if(!vd.wait_mouse_up && has_artists && mbd){
+    if(fabsf(md.x)>fabsf(md.y)) vd.panx_velocity-=(md.x/aum->area->w);
   }
 
-  //dragging with mouse horiz
-  if(velocity->x!=0.f && aum&&aum->artist_len){
-    double max_offset=vd.vlen*vd.max_offset;
-    vd.raw_start=fmin(vd.len+max_offset-vd.vlen,fmax(-max_offset,(vd.raw_start+velocity->x*vd.vlen)));
+  //panning with mouse horiz
+  if(vd.panx_velocity!=0.f && has_artists){
+    float x=MAX_OFFSETX*vd.rvlen;
+    vd.rstart=fmin(fmax(-x,(vd.panx_velocity)*vd.rvlen+vd.rstart),vd.len-vd.rvlen+x);
+    vd.offsetx=vd.rstart<0.f?vd.rstart:vd.rstart+vd.rvlen>=vd.len?vd.rstart+vd.rvlen-vd.len:vd.rstart-floor(vd.rstart);
     need_update=1;
   }
 
-  if(velocity->x!=0.f){
-    velocity->x*=vd.decay;
-    if(fabsf(velocity->x)<MINIMUM_VELOCITY)velocity->x=0.f;
+  if(vd.panx_velocity!=0.f){
+    vd.panx_velocity*=PANX_DECAY;
+    if(fabsf(vd.panx_velocity)<MINIMUM_PANX)vd.panx_velocity=0.f;
   }
   //fast move horiz with ARROW_(LEFT/RIGHT)
   int arrow_key=(IsKeyPressed(KEY_LEFT)||IsKeyDown(KEY_LEFT))?-1.0:
     (IsKeyPressed(KEY_RIGHT)||IsKeyDown(KEY_RIGHT))?1.0:0;
   if(arrow_key!=0){
-    velocity->x+=arrow_key*ARROW_KEYS_SCALE;
+    vd.panx_velocity+=arrow_key*ARROW_KEYS_SCALE;
     need_update=1;
   }
 
-  //dragging with mouse vert
-  if(!vd.wait_mouse_up && velocity->y != 0.f && md.y != 0.f &&has_artists &&mbd){;
-    vd.offsety-=velocity->y;
-    if(fabs(vd.offsety)>vd.max_offset)vd.offsety=vd.offsety>0?vd.max_offset:-vd.max_offset;
+  //move to the far left or right with KEY_A/KEY_Z
+  int where=IsKeyPressed(KEY_A)?-1:IsKeyPressed(KEY_Z)?1:0;
+  if(where){
+    float offsetx=MAX_OFFSETX*0.25*vd.rvlen;
+    vd.rstart=where<0?-offsetx:vd.len-vd.rvlen+offsetx;
+    vd.offsetx=offsetx*where;
     need_update=1;
+  }
+    
+  //dragging with mouse vert
+  if(!vd.wait_mouse_up   &&has_artists &&mbd){;
+    vd.offsety+=(md.y/aum->area->h);;
+    float oy=fabs(vd.offsety);
+    if(oy>MAX_PAN_Y)vd.offsety=oy/vd.offsety*MAX_PAN_Y;
+    if (md.y!=0.f) need_update=1;
+  }
+
+  Vector2 wm=GetMouseWheelMoveV();
+  //zoomx
+  if(wm.y!=0.f)vd.zoomx_velocity=wm.y*ZOOMX_USE*vd.rvlen;
+  if(aum && vd.zoomx_velocity!=0.f){
+    double vlen=vd.rvlen-vd.zoomx_velocity;
+    vd.rvlen=MIN(MAX(MINIMUM_VLEN,vlen),vd.len);
+    vd.zoomx_velocity*=ZOOMX_DECAY;
+    vd.offsetx=0;
+    /* float mrel=(GetMouseX()-aum->area->x)/aum->area->w; */
+    if(vd.rvlen+vd.rstart>vd.len)vd.rstart=vd.len-vd.rvlen;
+    if(fabsf(vd.zoomx_velocity)<MINIMUM_ZOOMX||
+       vd.rvlen==MINIMUM_VLEN||
+       vd.rvlen==vd.len)vd.zoomx_velocity=0.f;
+    need_update=1;
+  }
+
+
+  //zoomy
+  if(wm.x!=0.f){
+    float temp=vd.zoom.y;
+    vd.zoom.y+=wm.x*ZOOMY_SCALE;
+    vd.zoom.y=MAX(-MAX_ZOOMY,MIN(MAX_ZOOMY,vd.zoom.y));
+    if(temp!=vd.zoom.y)need_update=1;
   }
 
   //reset with KEY_R
   if(IsKeyPressed(KEY_R)){
-    velocity->x=velocity->y=0.f;
+    vd.panx_velocity=0.f;
     vd.offsety=0.f;
-    vd.scaley=DEFAULT_ZOOMY;
-    need_update=1;
+    vd.zoom.y=-5;  
+    need_update=1;    
   }
 
-  Vector2 wm=GetMouseWheelMoveV();
-  if(aum && has_artists){
-    //zoomx
-    if(wm.y!=0.f){
-      vd.zoomx+=1;
-      long long vlen=vd.vlen+vd.zoomx*-wm.y;
-      if(vd.eff_vlen<MINIMUM_VLEN)vd.zoomx=0;   /* TODO: fix vd.eff_vlen moving past vd.vlen*/
-      size_t pvlen=vd.vlen;
-      vd.vlen=MIN(MAX(MINIMUM_VLEN,vlen),vd.len);
-      vlen=vd.vlen-pvlen;
-      float left=(GetMouseX()-aum->area->x)/aum->area->w*vlen;
-      vd.raw_start-=left;
-      double max_offset=vd.vlen*vd.max_offset;
-      vd.raw_start=fmin(vd.len+max_offset,fmax(-max_offset,(vd.raw_start)));
-      need_update=1;
-    }
-    //zoomy
-    if(wm.x!=0.f){
-      float temp=vd.scaley;
-      vd.scaley+=wm.x*ZOOMY_SCALE;
-      vd.scaley=MAX(-MAX_ZOOMY,MIN(MAX_ZOOMY,vd.scaley));
-      need_update=temp!=vd.scaley;
-    }
-  }
+  vd.start=vd.offsetx<0.f?0:vd.offsetx<1.f?vd.rstart:ceil(vd.rstart);
+  vd.vlen=vd.offsetx<0.f?vd.rvlen-fabsf(vd.offsetx):vd.offsetx<1.f?vd.rvlen:vd.rvlen-vd.offsetx;
 
-  //finally
-  {
-    double l=fmax(0.f, vd.raw_start)+vd.vlen;
-    vd.offsetx=(vd.raw_start<0)?vd.raw_start:
-      (l>vd.len)?l-vd.len:
-      vd.raw_start-floor(vd.raw_start);
-    vd.start=fmax(0.f,vd.raw_start);
-    vd.eff_vlen=vd.vlen-fabs(floor(vd.offsetx));
-    vd.stop=vd.start+vd.eff_vlen;
-    ASSERT(vd.len>=vd.stop);
-    if(l<vd.len)vd.stop+=1;
-    if(l<vd.len-1)vd.stop+=1;
-    /* if(vd.offsetx>1.f)vd.offsetx=vd.raw_start-floor(vd.raw_start); */
+  vd.draw_len=vd.vlen;
+  for(size_t i=0;i<2;++i){
+    if(vd.draw_len+vd.rstart<vd.len-1)vd.draw_len+=1;
+    else break;
   }
-  if(need_update)figure->force_update=need_update;
+  
+  if(need_update)figure->redraw_count++;
   fc->vd=vd;
 }
 
@@ -515,7 +522,7 @@ static void  figure_draw_title(Figure *figure)
   Theme theme=figure->theme;
   Rect area=fc->title_bar.area;
   float x=align_text(figure->font,figure->title,area.w, theme.font_size,theme.spacing, ALIGNMENT_CENTER);
-  DrawTextEx(*figure->font,figure->title,(Vector2){x+area.x,area.y+1},theme.font_size,theme.font_spacing,Fade(theme.fg,1.0));
+  DrawTextEx(*figure->font,figure->title,(Vector2){x+area.x,area.y+1},theme.font_size,theme.font_spacing,theme.fg);
 }
 
 

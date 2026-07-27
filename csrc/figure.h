@@ -19,21 +19,20 @@ typedef struct Vd Vd; //view data
 
 struct Vd{
   size_t len;
+  double rstart;
   size_t start;
-  size_t stop; //exclusive
-  size_t vlen;
-  size_t eff_vlen;
-  size_t ulen;
-  size_t zoomx;  
-  Vector2 velocity;
+  size_t vlen,draw_len;
+  double rvlen;
+  float offsetx, offsety;
+  float panx_velocity;
+  float zoomx_velocity;
+  Vector2 zoom;
   Axes* aum;
   int wait_mouse_up;
-  float decay;
-  double raw_start;
-  float offsetx,offsety;
-  float max_offset;
-  float scaley;
-};//view data
+  int redraw_modebar;
+
+};
+  
 
 
 typedef struct{
@@ -46,7 +45,6 @@ struct Fconfig {
   char *font_path;
   ReadySignal* signal_initialized;
   FigureState state;
-  bool update;
   Rect* rects;
   Vd vd;
   double* xdata;

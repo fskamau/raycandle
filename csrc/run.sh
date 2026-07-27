@@ -18,6 +18,6 @@ LAST_ARG="${@: -1}"
 EXE_NAME=$(basename "$LAST_ARG" .c)
 
 
-gcc "$@" -o "$EXE_NAME" `pkg-config --cflags raylib`  -L./build -lraycandle `pkg-config --libs raylib`  -lm 
+gcc "$@" -o "$EXE_NAME" -Wall -Wextra `pkg-config --cflags raylib`  -L./build -lraycandle `pkg-config --libs raylib`  -lm 
 
  LD_LIBRARY_PATH=$RAYCANDLE_LIB ./$EXE_NAME

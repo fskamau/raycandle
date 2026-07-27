@@ -1,4 +1,3 @@
-import itertools
 import threading
 import warnings
 from typing import Any, NoReturn, Type
@@ -51,7 +50,7 @@ class Collector:
         if diff := self.__data_names__.difference(df.columns):
             raise ValueError(f"missing column names {diff}")
         tuple(map(lambda x: x.set_data(df[x.__data_names__],start=start), self._artists))
-        # self._fig.update()
+        self._fig._api.fig.redraw_modebar+=1  #trigger just the redraw
         
 
 class Figure:
@@ -82,10 +81,6 @@ class Figure:
         ffi.cdef(open(os.path.join(FPATH, CDEF_NAME)).read())
         self._api = RApi(lib, ffi.NULL, ffi, self)
 
-    @property
-    def is_window_closed(self) -> bool:
-        return self._api.is_window_closed
-
 
     def _init(self) -> None:
         self.ax = [Axes(i, self._api) for i in range(self._api.fig.axes_count)]
@@ -93,7 +88,7 @@ class Figure:
     @window_not_closed
     def _show(self, window_title: Optional[str], width: int, height: int, fps: int) -> None:
         self._api.lib.figure_show(self._api.fig, self._api.cstr(window_title), width, height, fps)
-        self._api.is_window_closed = True
+        self._api.closed = True
         self._wait_closed.set()
 
     def _wait_init(self) -> None:
@@ -169,3 +164,7 @@ class Figure:
     def wait_closed(self):
         self._wait_closed.wait()
         
+    @property
+    def closed(self)->bool:
+        return self._api.closed
+  

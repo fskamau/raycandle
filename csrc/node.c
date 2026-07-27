@@ -6,7 +6,6 @@
 
 #define RECT_PRINT(r) printf("(Rect){% 6.2f % 6.2f % 6.2f % 6.2f }\n",(r).x,(r).y,(r).w,(r).h)
 
-typedef Rect* RectRatios;
 
 struct NData {
   Arena* arena;

@@ -22,8 +22,8 @@ def window_not_closed(func: _T) -> _T:
     """
 
     def wrapper(self: Type[RApi], *args: Any, **kwargs: Any):
-        if self._api.is_window_closed:
-            exit(f"*FATAL: Call to '{func.__name__}' ignored because window is already closed*\n")  # prevent reference to dropped memory
+        if self._api.closed:
+            raise SystemExit(f"Call to '{func.__name__}' ignored because window is already closed*\n")  # prevent reference to dropped memory
         return func(self, *args, **kwargs)
 
     return wrapper
@@ -35,7 +35,7 @@ class RApi:
         self.ffi = ffi
         self.lib = lib
         self.null = self.ffi.NULL
-        self.is_window_closed = False
+        self.closed = False
         self.figure = figure
         self.total_len=0
 

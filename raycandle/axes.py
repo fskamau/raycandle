@@ -36,7 +36,7 @@ class Axes:
             elif isinstance(artist, (tuple, list)):
                 artist = Line(pd.Series(artist), **kwargs)
             else:
-                raise Exception(f"{type(artist)} may need to subclass {RC_Artist}")
+                raise Exception(f"{type(artist)} may need to subclass {Artist}")
         if hasattr(artist, "xdata"):
             self._api.figure.validate_xdata(artist)
         artist._api = self._api
