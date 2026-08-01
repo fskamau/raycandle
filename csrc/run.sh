@@ -6,7 +6,7 @@ export PKG_CONFIG_PATH=/home/ve/opt/lib/raylib/lib/pkgconfig
 make 
 
 
-RAYCANDLE_LIB="./build"
+RAYCANDLE_LIB="build"
 
 if [ "$#" -lt 1 ]; then
     echo "Usage: ./run.sh file1.c [file2.c ...] [optional_flags]"
@@ -15,7 +15,7 @@ fi
 
 
 LAST_ARG="${@: -1}"
-EXE_NAME=$(basename "$LAST_ARG" .c)
+EXE_NAME=$RAYCANDLE_LIB/$(basename "$LAST_ARG" .c)
 
 
 gcc "$@" -o "$EXE_NAME" -Wall -Wextra `pkg-config --cflags raylib`  -L./build -lraycandle `pkg-config --libs raylib`  -lm 

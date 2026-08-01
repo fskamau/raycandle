@@ -176,8 +176,10 @@ void axes_draw(Axes* axes)
   {
     float or=vd.offsetx/vd.rvlen;   
     if (vd.offsetx<0.f)area.x-=or*area.w;
-    if (vd.offsetx>0.f && vd.offsetx<1.f)area.w+=or*area.w;
-    /* DrawRectangleLines(NODE_RECT_UNWRAP(area),axes->fig->theme.fg); */
+    if (vd.offsetx>0.f && vd.offsetx<1.f){
+      area.x-=or*area.w;
+    }
+    /* DrawRectangleLines(NODE_RECT_UNWRAP(area),RED); */
     artist=axes->artist;
     while(artist){
       artist->avt->draw(artist,area);

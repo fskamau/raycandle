@@ -41,8 +41,8 @@
 #define MAX_PAN_Y 0.5
 #define MAX_PAN_X 0.9
 
-#define ZOOMX_DECAY 0.5
-#define MINIMUM_ZOOMX 0.1
+#define ZOOMX_DECAY 0.4
+#define MINIMUM_ZOOMX 0.2
 #define ZOOMX_USE 0.1
 
 static void figure_compile(Figure* figure);
@@ -205,17 +205,30 @@ void draw_slider(int *value, float min, float max, float x, float y, float w,
   DrawTextEx(font, buf, (Vector2){tx, ty}, theme.font_size, theme.font_spacing,theme.fg);
 }
 
+void randomize(int *ptr, size_t len, int rand_min, int rand_max){
+  ASSERT(ptr&& len>0);
+  for(size_t i=0;i<len;++i){
+    ptr[i]=(double)rand()/RAND_MAX*(rand_max-rand_min)+rand_min;
+  }
+}
+
 void figure_show(Figure* figure, char* window_title, int width, int height, int fps)
 {
   Fconfig* fc=figure->fc;
   ASSERTM(fc->state==FIGURE_STATE_CREATED,"figure_show called again\n");
   raylib_init(figure,window_title,width,height,fps);//figure state will now be FIGURE_STATE_RUUNING
+
+  srand(time(0));
+
   while (!WindowShouldClose()) {
     raylib_init_loop(figure);
     BeginDrawing();
     /* ClearBackground(figure->theme.bg); */
     figure_update(figure);
     {
+      if(IsKeyPressed(KEY_N)){
+        randomize(figure->x,10-1,0,10);
+        }
       int slider_count = sizeof(figure->x) / sizeof(figure->x[0]);
       if(figure->x[slider_count-1]){
         Rect area = *figure->axes[figure->axes_count - 1].area;
@@ -427,8 +440,10 @@ static void figure_handle_inputs(Figure* figure)
     vd.wait_mouse_up=false;
     vd.panx_velocity=0;
   }
+  if(fabsf(md.x)>fabsf(md.y))md.y=0;
+  else md.x=0;
   if(!vd.wait_mouse_up && has_artists && mbd){
-    if(fabsf(md.x)>fabsf(md.y)) vd.panx_velocity-=(md.x/aum->area->w);
+    if(md.x!=0) vd.panx_velocity-=(md.x/aum->area->w);
   }
 
   //panning with mouse horiz
@@ -454,7 +469,7 @@ static void figure_handle_inputs(Figure* figure)
   //move to the far left or right with KEY_A/KEY_Z
   int where=IsKeyPressed(KEY_A)?-1:IsKeyPressed(KEY_Z)?1:0;
   if(where){
-    float offsetx=MAX_OFFSETX*0.25*vd.rvlen;
+    float offsetx=MAX_OFFSETX*0.05*vd.rvlen;
     vd.rstart=where<0?-offsetx:vd.len-vd.rvlen+offsetx;
     vd.offsetx=offsetx*where;
     need_update=1;
@@ -472,12 +487,12 @@ static void figure_handle_inputs(Figure* figure)
   //zoomx
   if(wm.y!=0.f)vd.zoomx_velocity=wm.y*ZOOMX_USE*vd.rvlen;
   if(aum && vd.zoomx_velocity!=0.f){
-    double vlen=vd.rvlen-vd.zoomx_velocity;
-    vd.rvlen=MIN(MAX(MINIMUM_VLEN,vlen),vd.len);
+    float left=(GetMouseX()-aum->area->x)/aum->area->w;
+    double vlen=fmin(vd.len,fmax(MINIMUM_VLEN,vd.rvlen-vd.zoomx_velocity));
+    vd.rstart=fmin(vd.len-vlen,fmax(0,(vd.rstart+vd.zoomx_velocity*left)));
+    vd.rvlen=vlen;
+    vd.offsetx=vd.rstart<0.f?vd.rstart:vd.rstart+vd.rvlen>=vd.len?vd.rstart+vd.rvlen-vd.len:vd.rstart-floor(vd.rstart);
     vd.zoomx_velocity*=ZOOMX_DECAY;
-    vd.offsetx=0;
-    /* float mrel=(GetMouseX()-aum->area->x)/aum->area->w; */
-    if(vd.rvlen+vd.rstart>vd.len)vd.rstart=vd.len-vd.rvlen;
     if(fabsf(vd.zoomx_velocity)<MINIMUM_ZOOMX||
        vd.rvlen==MINIMUM_VLEN||
        vd.rvlen==vd.len)vd.zoomx_velocity=0.f;
