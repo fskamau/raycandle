@@ -73,7 +73,7 @@ class Axes:
     @final
     @window_not_closed
     def show_legend(self, legend_position: LegendPosition = LegendPosition.BOTTOM_LEFT) -> None:
-        self._api.lib.axes_show_legend(self._api.fig.axes + self._id, legend_position)
+        self._api.lib.axes_show_legend(self._axes, legend_position)
 
     @final
     @window_not_closed

@@ -117,3 +117,11 @@ void epoch2strftime(int epoch, Str buffer, const char *format)
     exit(1);
   }
 }
+
+void set_window_icon(char *file_path)
+{
+  ASSERT(file_path);
+  Image image=LoadImage(file_path);
+  SetWindowIcon(image);
+  UnloadImage(image);
+}

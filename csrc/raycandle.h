@@ -107,7 +107,8 @@ struct Theme{
   size_t font_size;
   size_t font_spacing;
   float spacing;
-  char* font_path;
+  char* font_path, *icon_path;
+  bool show_ylabel;
 }; //visible config for the figure
 
 

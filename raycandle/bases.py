@@ -81,9 +81,18 @@ class Artist(RApi):
         whether the artists will be considered when ylims of its axes are calculated
         """
         self.__artist__.is_limitable = False
+        return self
 
 
 
+    def fade(self, alpha:float)->'self':
+        if alpha<=0.0 or  alpha>1.0:raise ValueError("invalid fade value")
+        self.__artist__.colors[0].a=int(alpha*255)
+        return self
+
+    def __repr__(self)->str:
+        return f"Artist(label='{'' if self.__artist__.label==self._api.null else self._api.ffi.string(self.__artist__.label).decode()}')"
+    
 class Color:
     def __init__(self, r: int, g: int, b: int, a: int = 0xFF):
         self.r = max(0, min(255, r))

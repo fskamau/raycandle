@@ -14,7 +14,7 @@ SOURCES := utils.c str.c figure.c node.c axes.c ready_signal.c artist.c
 OBJECTS := $(patsubst %.c,$(TARGET_FOLDER)/%.o,$(SOURCES))
 DEPS    := $(OBJECTS:.o=.d)
 
-all: $(TARGET_FOLDER)/libraycandle.so.1 link_to_local
+all: $(TARGET_FOLDER)/libraycandle.so.1 $(TARGET_FOLDER)/raycandle.h link_to_local
 $(TARGET_FOLDER):
 	mkdir -p $(TARGET_FOLDER)
 $(TARGET_FOLDER)/%.o: %.c | $(TARGET_FOLDER)

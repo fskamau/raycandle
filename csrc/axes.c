@@ -58,7 +58,7 @@ void axes_update_ylim(Axes* axes)
     axes->lim=lim;
   }
 
-  axes_set_ylabel_len(axes);//measure out label
+  if(axes->fig->theme.show_ylabel)axes_set_ylabel_len(axes);//measure out label
   axes->w=axes->area->w/(vd.rvlen);
 }
 
@@ -114,6 +114,7 @@ void axes_set_yformatter(Axes* axes,char* format)
 
 static void axes_draw_ylabel(Axes* axes)
 {
+  if(!axes->fig->theme.show_ylabel)return;
   if(!axes->artist_len)return;
   Rect area=axes->ylabel.area;
 
@@ -163,7 +164,7 @@ void axes_draw(Axes* axes)
   Rect area=*axes->area;
   area.w+=axes->ylabel.area.w;
   {
-    DrawRectangleLines(NODE_RECT_UNWRAP(area),axes->fig->theme.fg);
+    DrawRectangleLines(NODE_RECT_UNWRAP(area),Fade(axes->fig->theme.fg,0.3));
     area.x+=1;
     area.y+=1;
     area.w-=(2+axes->ylabel.area.w);

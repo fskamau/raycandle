@@ -29,5 +29,5 @@ typedef enum {
 typedef struct Font Font;
 float align_text(Font *font, const char *text, int width, int font_size, int spacing, Alignment alignment);
 void epoch2strftime(int epoch, Str buffer, const char *format);
-
+void set_window_icon(char *file_path);
 #endif //_RAYCANDLE_UTILS_

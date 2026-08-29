@@ -17,7 +17,7 @@ from threading import Event
 FPATH = Path(os.path.dirname(__file__))
 LIB_NAME = FPATH / "libraycandle.so"
 CDEF_NAME = FPATH / "raycandle.h"
-FONT_PATH = FPATH / "assets/font.ttf"
+ASSET_PATH=FPATH/"assets"
 
 
 class Collector:
@@ -65,7 +65,10 @@ class Figure:
         self._pxdata = self._api.null
         self._api.fig = self._api.lib.figure_create(rows, cols)
         theme = self._api.fig.theme
-        theme.font_path = self._api.cstr(str(FONT_PATH))
+        ic,fp=self._api.cstr(str(ASSET_PATH/"icon.png")),self._api.cstr(str(ASSET_PATH/"font.ttf"))
+        
+        theme.icon_path =ic
+        theme.font_path = fp
         self._api.lib.figure_set_theme(self._api.fig, theme)
         self._api.this = self        
 

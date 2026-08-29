@@ -131,17 +131,17 @@ size_t nc_compile(NC *nc)
 }
 
 
-void nc_set_area(NC* nc, Rect* dest, Rect area, float spacing)
+void nc_set_area(NC* nc, Rect* child_areas, Rect src_area, float spacing)
 {
-    ASSERT(nc && dest);
+    ASSERT(nc && child_areas);
     ASSERTM(nc->data->nodes, "call nc_compile first");
     const int pad = (int)roundf(spacing);
     for (size_t i = 0; i < nc->data->count; ++i) {
         Rect* na = nc->data->nodes[i];
-        float fx0 = area.x + na->x * area.w;
-        float fy0 = area.y + na->y * area.h;
-        float fx1 = area.x + (na->x + na->w) * area.w;
-        float fy1 = area.y + (na->y + na->h) * area.h;
+        float fx0 = src_area.x + na->x * src_area.w;
+        float fy0 = src_area.y + na->y * src_area.h;
+        float fx1 = src_area.x + (na->x + na->w) * src_area.w;
+        float fy1 = src_area.y + (na->y + na->h) * src_area.h;
 
         int x0 = (int)floorf(fx0);
         int y0 = (int)floorf(fy0);
@@ -156,7 +156,7 @@ void nc_set_area(NC* nc, Rect* dest, Rect area, float spacing)
         if (x1 < x0) x1 = x0;
         if (y1 < y0) y1 = y0;
 
-        dest[i] = (Rect) {
+        child_areas[i] = (Rect) {
             .x = (float)x0,
             .y = (float)y0,
             .w = (float)(x1 - x0),

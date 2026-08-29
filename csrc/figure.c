@@ -9,7 +9,7 @@
 #include <locale.h>
 
 #define MAX_FIGURE_TITLE 256 // max figure title char
-#define FIGURE_ARENA_SIZE 1000*1024*1024
+#define FIGURE_ARENA_SIZE 3*1000*1024*1024
 #define NODES_ARENA_SIZE (size_t)1024*8
 #define DEFAULT_WINDOW_TITLE "rc"
 
@@ -57,6 +57,21 @@ static void figure_handle_inputs(Figure* figure);
 static void figure_draw_cursors(Figure *figure);
 static void figure_axes_init(Figure* figure);
 
+
+
+//[temp]
+void jis_draw(JIS* jis, Figure* figure);
+void jis_clear(JIS *jis);
+void jis_append_current_index_under_mouse(JIS* jis, Figure* figure);
+JIS* jis_create(size_t cap, Arena* arena);
+static void slider_draw(Figure* figure);
+static void slider_update(Figure* figure);
+
+
+
+//temp
+
+
 static Figure* figure_create_()
 {
   setlocale(LC_ALL,"");
@@ -67,6 +82,7 @@ static Figure* figure_create_()
   figure->fc=arena_alloc(arena,sizeof(Fconfig));
   memset(figure->fc,0, sizeof(Fconfig));
   figure->fc->mode_bar.is_visible=1;
+  figure->theme.show_ylabel=true;
   figure->fc->signal_initialized=ready_signal_create(arena);
   figure->arena=arena;
   return figure;
@@ -115,10 +131,17 @@ void raylib_init(Figure *figure,char *window_title,int width, int height, int fp
   InitWindow(width,height,window_title?window_title:DEFAULT_WINDOW_TITLE);
   SetTargetFPS(fps);
   load_font(figure);
+
+  if(figure->theme.icon_path){
+    set_window_icon(figure->theme.icon_path);
+    str_free(figure->theme.icon_path);
+  }
+  
   figure_axes_init(figure);
   figure->fc->state=FIGURE_STATE_RUNNING;
   ready_signal_set(figure->fc->signal_initialized);
   figure->redraw_count++;
+  figure->fc->vd.jis=jis_create(512,figure->arena);
 }
 
 void figure_wait_for_InitWindow(Figure* figure)
@@ -151,18 +174,21 @@ void figure_update(Figure* figure){
   Rect area=(Rect){0,0,GetScreenWidth(),GetScreenHeight()};
   if(fc->title_bar.is_visible)insert_bar(1, &area,&fc->title_bar.area, figure->theme.font_size,figure->theme.spacing);
   if(fc->mode_bar.is_visible)insert_bar(0, &area,&fc->mode_bar.area, figure->theme.font_size,figure->theme.spacing);
+  if(fc->vd.jis->len>0)insert_bar(1, &area,&fc->vd.jis->area, figure->theme.font_size,figure->theme.spacing);//temp
   figure_handle_inputs(figure);
+  slider_update(figure);
   if(figure->redraw_count||figure->redraw_modebar){
     ClearBackground(figure->theme.bg);
     if(figure->redraw_count){
       nc_set_area(nc,figure->fc->rects,area,spacing);
       figure_update_xlim(figure);
     }
+    figure_draw_cursors(figure);
     for(size_t i=0;i<figure->axes_count;++i){
       if(figure->redraw_count)axes_update_ylim(figure->axes+i);
       axes_draw(figure->axes+i);
     }
-    figure_draw_cursors(figure);
+    slider_draw(figure);
     figure_draw_title(figure);
     if(figure->redraw_count)figure->redraw_count--;
     if(figure->redraw_modebar)figure->redraw_modebar--;
@@ -170,7 +196,7 @@ void figure_update(Figure* figure){
   figure_mode_bar_draw(figure);
 }
 
-void draw_slider(int *value, float min, float max, float x, float y, float w,
+void draw_slider(int id, int *value, float min, float max, float x, float y, float w,
                  Font font, Theme theme) {
   float h = 20;
   Vector2 m = GetMousePosition();
@@ -198,7 +224,7 @@ void draw_slider(int *value, float min, float max, float x, float y, float w,
   DrawRectangle((int)x, (int)(y + h / 2 - 2), (int)w, 1, YELLOW);
   DrawLine((int)knobX, (int)y+0.1*h, (int)knobX, (int)(y + h*0.8), YELLOW);
   char buf[32];
-  snprintf(buf, sizeof(buf), "%d", *value);
+  snprintf(buf, sizeof(buf), "[%d] = %d",id, *value);
   Vector2 size = MeasureTextEx(font, buf, theme.font_size, theme.font_spacing);
   float tx = x + w + 10;
   float ty = y + (h - size.y) * 0.5f;
@@ -212,11 +238,52 @@ void randomize(int *ptr, size_t len, int rand_min, int rand_max){
   }
 }
 
+//[temp]
+static void slider_update(Figure* figure)
+{
+  int slider_count = sizeof(figure->x) / sizeof(figure->x[0]);
+  if(figure->x[slider_count-1]){
+    if(IsKeyPressed(KEY_N)){
+      figure->redraw_count+=10;//[lazy]
+      randomize(figure->x,10-1,0,10);
+    }
+  }
+}
+  
+static void slider_draw(Figure* figure)
+{
+  int slider_count = sizeof(figure->x) / sizeof(figure->x[0]);
+  if(!figure->x[slider_count-1])return;
+  Rect area = *figure->axes[figure->axes_count - 1].area;
+  float padding = 10.0f;
+  float usable_h = area.h - 2 * padding;
+  float step = usable_h / slider_count;
+  for (int i = 0; i < slider_count; i++) {
+    float y = area.y + padding + i * step;
+    draw_slider(
+                i+1,
+                figure->x+i,
+                1.0f,
+                100.0f,
+                area.x + 30,
+                y,
+                area.w - 100,
+                *figure->font,
+                figure->theme
+                );
+  }
+}
+
+
+
 void figure_show(Figure* figure, char* window_title, int width, int height, int fps)
 {
   Fconfig* fc=figure->fc;
   ASSERTM(fc->state==FIGURE_STATE_CREATED,"figure_show called again\n");
   raylib_init(figure,window_title,width,height,fps);//figure state will now be FIGURE_STATE_RUUNING
+  
+  JIS* jis=figure->fc->vd.jis;
+
 
   srand(time(0));
 
@@ -225,30 +292,14 @@ void figure_show(Figure* figure, char* window_title, int width, int height, int 
     BeginDrawing();
     /* ClearBackground(figure->theme.bg); */
     figure_update(figure);
-    {
-      if(IsKeyPressed(KEY_N)){
-        randomize(figure->x,10-1,0,10);
-        }
-      int slider_count = sizeof(figure->x) / sizeof(figure->x[0]);
-      if(figure->x[slider_count-1]){
-        Rect area = *figure->axes[figure->axes_count - 1].area;
-        float padding = 10.0f;
-        float usable_h = area.h - 2 * padding;
-        float step = usable_h / slider_count;
-        for (int i = 0; i < slider_count; i++) {
-          float y = area.y + padding + i * step;
-          draw_slider(
-                      figure->x + i,
-                      1.0f,
-                      100.0f,
-                      area.x + 30,
-                      y,
-                      area.w - 100,
-                      *figure->font,
-                      figure->theme
-                      );
-        }
+
+    {//temp
+      if(jis->len>0)jis_draw(jis,figure);
+      if(IsKeyPressed(KEY_S)){
+        figure->redraw_count++;
+        jis_append_current_index_under_mouse(jis, figure);
       }
+      if(IsKeyPressed(KEY_C))jis_clear(figure->fc->vd.jis);
     }
     EndDrawing();
     
@@ -261,11 +312,14 @@ void figure_set_theme(Figure* figure, Theme theme)
 {
   ASSERT(figure);
   if(theme.font_path){
-    ASSERTM(!figure->fc->font_path,"figure_set_theme can only load 1 font; set font_path to NULL\n");
     ASSERTM(figure->fc->state==FIGURE_STATE_CREATED,"can only set font when before figure_show\n");
   }
-  figure->fc->font_path=str_createf("%s",theme.font_path);
-  theme.font_path=NULL;
+  if(theme.font_path){
+    theme.font_path=str_createf("%s",theme.font_path);
+  }
+  if(theme.icon_path){
+    theme.icon_path=str_createf("%s",theme.icon_path);
+  }
   figure->theme=theme;
   figure->redraw_count++;
 }
@@ -345,16 +399,17 @@ static void figure_create_axes(Figure *figure)
 
 static void load_font(Figure* figure)
 {
-  Fconfig* fc=figure->fc;
   figure->font=arena_alloc(figure->arena,sizeof(Font));
   Font* font=figure->font,temp;
+  char* font_path=figure->theme.font_path;
   *font=GetFontDefault();
-  if(fc->font_path){
-    temp=LoadFont(fc->font_path);
+  printf(">>>>%s\n",font_path);
+  if(font_path){
+    temp=LoadFont(font_path);
     if(temp.baseSize!=0){
       *font=temp;
     }
-    str_free(fc->font_path);
+    str_free(figure->theme.font_path);
   }
 }
 
@@ -431,6 +486,7 @@ static void figure_handle_inputs(Figure* figure)
   int mbd=IsMouseButtonDown(MOUSE_BUTTON_LEFT);
   int need_update=0;
   figure->redraw_modebar+=(int)(md.x!=0.f|| md.y!=0);
+  float aum_mouse_rel=!aum?0:(GetMouseX()-aum->area->x)/aum->area->w;
   
   if(vd.aum!=aum){
     vd.aum=aum;
@@ -508,6 +564,12 @@ static void figure_handle_inputs(Figure* figure)
     if(temp!=vd.zoom.y)need_update=1;
   }
 
+  //put artist at the middle
+  if(aum && has_artists && IsKeyPressed(KEY_M)){
+    vd.rstart-=(0.5-aum_mouse_rel)*vd.rvlen;
+    need_update=1;
+  }
+
   //reset with KEY_R
   if(IsKeyPressed(KEY_R)){
     vd.panx_velocity=0.f;
@@ -551,7 +613,7 @@ static void  figure_draw_cursors(Figure *figure)
   Rect area=*aum->area;
   double mreal=scale_to_limitf(mp.y, (Limit){area.y+area.h,area.y},aum->lim);
   float px=scale_to_limitf(mp.x, (Limit){area.x,area.x+area.w},(Limit){0.f, 1.f});
- Color c=Fade(theme.fg,0.5);
+  Color c=Fade(theme.fg,0.6);
   for(size_t i=0;i<figure->axes_count;++i){
     Axes axes=figure->axes[i];
     if(!axes.artist_len)continue;
@@ -579,6 +641,75 @@ static void figure_axes_init(Figure* figure)
     str_clear(buf);
     for(size_t x=0;x<axes->legend.llen;++x)str_append(buf,"%s"," ");
     axes->legend.llen=MeasureTextEx(font, buf, theme.font_size,theme.font_spacing).x;
+  }
+}
+
+
+
+JIS* jis_create(size_t cap, Arena* arena)
+{
+  ASSERT(arena);
+  ASSERT(cap>0);
+  JIS *jis=arena_alloc(arena,sizeof(JIS));
+  jis->jid=arena_alloc(arena, sizeof(*jis->jid)*cap);
+  jis->len=0;
+  jis->cap=cap;
+  return jis;
+}
+
+
+void jis_append_current_index_under_mouse(JIS* jis, Figure* figure)
+{
+  ASSERT(jis);
+  ASSERTM(jis->len<jis->cap,"items full");
+  JID *jid=&jis->jid[jis->len++];
+  Fconfig *fc=figure->fc;
+  Vd vd=fc->vd;
+  Axes *aum=get_axes_under_mouse(figure);
+  if(fc->xdata && aum && aum->artist_len){
+    float mx=(GetMouseX()-aum->area->x)/aum->area->w;
+    float index=mx*vd.rvlen+vd.start+fmin(vd.offsetx,0.f);
+    if(index>=0.f && index<vd.len){
+      size_t epoch= fc->xdata[(int)index]+(index-floor(index))*fc->timeframe;
+      jid->epoch=str_create(NULL,128);
+      epoch2strftime(epoch,jid->epoch, fc->xformat);
+      jid->rindex=index;
+    }
+  }
+}
+
+void jis_clear(JIS *jis)
+{
+  jis->len=0;  
+}
+
+
+void jis_draw(JIS* jis, Figure* figure)
+{
+  Theme theme=figure->theme;
+  Rect area=jis->area;
+  DrawRectangle(NODE_RECT_UNWRAP(area),theme.bg);
+  #define tlen 256
+  char buf_[tlen]={0};
+  char* buf=str_create(buf_,tlen);
+  float w=area.w/jis->len;
+  for(size_t i=0;i<jis->len;++i){
+    float sx=area.x+i*w;
+    str_clear(buf);
+    str_append(buf,"%s",jis->jid[i].epoch);
+    Vector2 m = GetMousePosition();
+    Rectangle bounds = (Rectangle){sx,area.y,w,area.h};
+    float tx=align_text(figure->font, buf, w, theme.font_size, theme.spacing, ALIGNMENT_CENTER);
+    if(CheckCollisionPointRec(m, bounds)){
+      if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)){
+        figure->fc->vd.rstart=jis->jid[i].rindex-figure->fc->vd.rvlen/2;
+        figure->fc->vd.offsetx=0;
+        figure->redraw_count+=1;
+      }
+      DrawRectangle(sx,area.y,w,area.h,Fade(theme.fg,0.2));      
+    }
+    DrawRectangleLines(sx,area.y,w,area.h,theme.fg);
+    DrawTextEx(*figure->font, buf, (Vector2){tx+sx, area.y}, theme.font_size, theme.font_spacing,theme.fg);
   }
 }
 

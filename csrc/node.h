@@ -32,9 +32,9 @@ struct NC {
 
 
 NC *nc_create(size_t bytes);
-void nc_divide(NC *nc, Node *parent, size_t* ratios, size_t count, bool vertical); //split a node. if ratios is NULL then split into equal `count` parts
+void nc_divide(NC *nc, Node *parent, size_t* ratios, size_t count, bool vertical); //split a node. if `ratios` is NULL then split into equal `count` parts
 void nc_grid(NC* nc, Node *node, size_t rows, size_t cols);
-size_t nc_compile(NC *nc); // compiles nodes and returns their length. Allocate Rects of length returned, then call nc_set_area to update
-void nc_set_area(NC* nc, Rect* dest, Rect area, float spacing); // set area the dest of len nc->count. only after nc_compile.
+size_t nc_compile(NC *nc); // compiles nodes and returns their length. Allocate Rects[length], then pass them to  nc_set_area to update
+void nc_set_area(NC* nc, Rect* child_areas, Rect src_area, float spacing); // set area the dest of len nc->count. only after nc_compile.
 Node* node_at(Node* parent, size_t index);
 #endif // __NODE_H__

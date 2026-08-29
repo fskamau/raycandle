@@ -16,6 +16,18 @@ typedef  struct Figure Figure;
 typedef struct NC NC;
 typedef struct Vd Vd; //view data
 
+typedef struct JID JID;
+struct JID {
+  double rindex;
+  char *epoch;
+};//jump index data
+typedef struct{
+  size_t len;
+  size_t cap;
+  JID* jid;
+  Rect area;
+}JIS;//jump index store;
+
 
 struct Vd{
   size_t len;
@@ -30,7 +42,7 @@ struct Vd{
   Axes* aum;
   int wait_mouse_up;
   int redraw_modebar;
-
+  JIS* jis;
 };
   
 
@@ -42,7 +54,6 @@ typedef struct{
 
 struct Fconfig {
   NC *nc;
-  char *font_path;
   ReadySignal* signal_initialized;
   FigureState state;
   Rect* rects;
