@@ -2,7 +2,7 @@ CC := gcc
 
 PKG_CONFIG_PATH_RAYLIB ?= /home/ve/opt/lib/raylib/lib/pkgconfig
 
-CFLAGS  := -Wall -Wextra -fPIC -std=c99 -O3 \
+CFLAGS  := -Wall -Wextra -fPIC -std=c99 -O0 \
            $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH_RAYLIB) pkg-config --cflags raylib 2>/dev/null)
 LDFLAGS := $(shell PKG_CONFIG_PATH=$(PKG_CONFIG_PATH_RAYLIB) pkg-config --libs raylib 2>/dev/null)  -lm -lpthread -lGL
 

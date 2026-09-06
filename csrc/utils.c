@@ -47,21 +47,21 @@ void scale_to_limit(const double *data, double *dest, size_t count, Limit srcl, 
   }
 }
 
+
 Limit get_lim(const double *data, size_t len)
 {
-    Limit lim = {INFINITY, -INFINITY};
-    int found = 0;
-    if (!data || len == 0) return (Limit){NAN, NAN};
-    for (size_t i = 0; i < len; i++) {
-        if (!isnan(data[i])) {
-            if (data[i] < lim.min) lim.min = data[i];
-            if (data[i] > lim.max) lim.max = data[i];
-            found = 1;
-        }
+    if (!data || len == 0) {
+        return (Limit){NAN, NAN};
     }
-    return found ? lim : (Limit){NAN, NAN};
-}
 
+    Limit lim = {INFINITY, -INFINITY};
+    for (size_t i = 0; i < len; i++) {
+        double val = data[i];
+        if (val < lim.min) lim.min = val;
+        if (val > lim.max) lim.max = val;
+    }
+    return (lim.min <= lim.max) ? lim : (Limit){NAN, NAN};
+}
 
 
 

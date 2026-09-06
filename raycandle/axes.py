@@ -54,6 +54,7 @@ class Axes:
     @window_not_closed
     def set_ylim(self, vmin:float, vmax:float) -> None:
         self._api.lib.axes_set_ylim(self._axes , vmin,vmax)
+        return self
 
     @final
     @window_not_closed

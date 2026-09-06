@@ -34,7 +34,7 @@ struct Vd{
   double rstart;
   size_t start;
   size_t vlen,draw_len;
-  double rvlen;
+  size_t rvlen;
   float offsetx, offsety;
   float panx_velocity;
   float zoomx_velocity;
@@ -43,6 +43,7 @@ struct Vd{
   int wait_mouse_up;
   int redraw_modebar;
   JIS* jis;
+
 };
   
 

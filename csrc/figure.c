@@ -17,7 +17,6 @@
 #define FG_DEFAULT GetColor(0x8b8ba7ff)
 #define VIEWPORT_INITIAL_LEN 120
 
-
 #define MINIMUM_VLEN 2 //could be 1 but limit would be 0
 
 #define MAX_ZOOMY 90.0
@@ -35,15 +34,15 @@
 
 #define AXES_YLABEL_MAX_LEN 128
 #define MAX_OFFSETX 0.9
-
-#define PANX_DECAY 0.6f
+ 
+#define PANX_DECAY 0.7f
 #define MINIMUM_PANX 0.05f
 #define MAX_PAN_Y 0.5
 #define MAX_PAN_X 0.9
 
-#define ZOOMX_DECAY 0.4
+#define ZOOMX_DECAY 0.6
 #define MINIMUM_ZOOMX 0.2
-#define ZOOMX_USE 0.1
+#define ZOOMX_SCALE 0.1
 
 static void figure_compile(Figure* figure);
 static void figure_create_axes(Figure *figure);
@@ -131,12 +130,13 @@ void raylib_init(Figure *figure,char *window_title,int width, int height, int fp
   InitWindow(width,height,window_title?window_title:DEFAULT_WINDOW_TITLE);
   SetTargetFPS(fps);
   load_font(figure);
-
+  
   if(figure->theme.icon_path){
     set_window_icon(figure->theme.icon_path);
     str_free(figure->theme.icon_path);
   }
-  
+
+    
   figure_axes_init(figure);
   figure->fc->state=FIGURE_STATE_RUNNING;
   ready_signal_set(figure->fc->signal_initialized);
@@ -403,7 +403,6 @@ static void load_font(Figure* figure)
   Font* font=figure->font,temp;
   char* font_path=figure->theme.font_path;
   *font=GetFontDefault();
-  printf(">>>>%s\n",font_path);
   if(font_path){
     temp=LoadFont(font_path);
     if(temp.baseSize!=0){
@@ -457,7 +456,7 @@ static void figure_mode_bar_draw(Figure *figure)
   Axes *aum=get_axes_under_mouse(figure);
   if(fc->xdata && aum && aum->artist_len){
     float mx=(GetMouseX()-aum->area->x)/aum->area->w;
-    float index=mx*vd.rvlen+vd.start+fmin(vd.offsetx,0.f);
+    float index=mx*vd.rvlen+vd.start+(vd.offsetx>1.f?(vd.offsetx-floor(vd.offsetx)):vd.offsetx);
     if(index>=0.f && index<vd.len){
       str_append(buf,"{start:'%'zu',at:'%'zu',showing:'%'zu', all:'%'zu'} ",vd.start,(size_t)index,vd.vlen,vd.len);
       size_t epoch= fc->xdata[(int)index]+(index-floor(index))*fc->timeframe;
@@ -487,33 +486,24 @@ static void figure_handle_inputs(Figure* figure)
   int need_update=0;
   figure->redraw_modebar+=(int)(md.x!=0.f|| md.y!=0);
   float aum_mouse_rel=!aum?0:(GetMouseX()-aum->area->x)/aum->area->w;
+  int recalc_offsetx=0;
   
-  if(vd.aum!=aum){
-    vd.aum=aum;
-    vd.wait_mouse_up=true;
-  }
+  
+  /* if(vd.aum!=aum){ */
+  /*   vd.aum=aum; */
+  /*   vd.wait_mouse_up=true; */
+  /* } */
+  
   if(IsMouseButtonPressed(MOUSE_BUTTON_LEFT)){
     vd.wait_mouse_up=false;
     vd.panx_velocity=0;
   }
-  if(fabsf(md.x)>fabsf(md.y))md.y=0;
-  else md.x=0;
-  if(!vd.wait_mouse_up && has_artists && mbd){
-    if(md.x!=0) vd.panx_velocity-=(md.x/aum->area->w);
-  }
 
-  //panning with mouse horiz
-  if(vd.panx_velocity!=0.f && has_artists){
-    float x=MAX_OFFSETX*vd.rvlen;
-    vd.rstart=fmin(fmax(-x,(vd.panx_velocity)*vd.rvlen+vd.rstart),vd.len-vd.rvlen+x);
-    vd.offsetx=vd.rstart<0.f?vd.rstart:vd.rstart+vd.rvlen>=vd.len?vd.rstart+vd.rvlen-vd.len:vd.rstart-floor(vd.rstart);
-    need_update=1;
-  }
+  *((fabsf(md.x)>fabsf(md.y))?&md.y:&md.x)=0;
+  
+  if(!vd.wait_mouse_up && has_artists && mbd && md.x!=0) vd.panx_velocity-=(md.x/aum->area->w);
+  
 
-  if(vd.panx_velocity!=0.f){
-    vd.panx_velocity*=PANX_DECAY;
-    if(fabsf(vd.panx_velocity)<MINIMUM_PANX)vd.panx_velocity=0.f;
-  }
   //fast move horiz with ARROW_(LEFT/RIGHT)
   int arrow_key=(IsKeyPressed(KEY_LEFT)||IsKeyDown(KEY_LEFT))?-1.0:
     (IsKeyPressed(KEY_RIGHT)||IsKeyDown(KEY_RIGHT))?1.0:0;
@@ -521,13 +511,17 @@ static void figure_handle_inputs(Figure* figure)
     vd.panx_velocity+=arrow_key*ARROW_KEYS_SCALE;
     need_update=1;
   }
+ 
 
-  //move to the far left or right with KEY_A/KEY_Z
+  //move to the far left / right with KEY_A/KEY_Z
   int where=IsKeyPressed(KEY_A)?-1:IsKeyPressed(KEY_Z)?1:0;
   if(where){
-    float offsetx=MAX_OFFSETX*0.05*vd.rvlen;
-    vd.rstart=where<0?-offsetx:vd.len-vd.rvlen+offsetx;
-    vd.offsetx=offsetx*where;
+    float offset=0.1*MAX_OFFSETX;
+    vd.rstart=where<0?0:vd.len-vd.rvlen+offset;
+    if((1.f-offset)*vd.rvlen>MINIMUM_VLEN){
+      vd.rstart+=offset*vd.rvlen*where;
+    }
+    recalc_offsetx=1;
     need_update=1;
   }
     
@@ -539,30 +533,47 @@ static void figure_handle_inputs(Figure* figure)
     if (md.y!=0.f) need_update=1;
   }
 
-  Vector2 wm=GetMouseWheelMoveV();
-  //zoomx
-  if(wm.y!=0.f)vd.zoomx_velocity=wm.y*ZOOMX_USE*vd.rvlen;
-  if(aum && vd.zoomx_velocity!=0.f){
-    float left=(GetMouseX()-aum->area->x)/aum->area->w;
-    double vlen=fmin(vd.len,fmax(MINIMUM_VLEN,vd.rvlen-vd.zoomx_velocity));
-    vd.rstart=fmin(vd.len-vlen,fmax(0,(vd.rstart+vd.zoomx_velocity*left)));
-    vd.rvlen=vlen;
-    vd.offsetx=vd.rstart<0.f?vd.rstart:vd.rstart+vd.rvlen>=vd.len?vd.rstart+vd.rvlen-vd.len:vd.rstart-floor(vd.rstart);
-    vd.zoomx_velocity*=ZOOMX_DECAY;
-    if(fabsf(vd.zoomx_velocity)<MINIMUM_ZOOMX||
-       vd.rvlen==MINIMUM_VLEN||
-       vd.rvlen==vd.len)vd.zoomx_velocity=0.f;
+  //panning with panx_velocity
+  if(vd.panx_velocity!=0.f){
+    float x=MAX_OFFSETX*(vd.rvlen-MINIMUM_VLEN);
+    vd.rstart=fmin(fmax(-x,(vd.panx_velocity)*vd.rvlen+vd.rstart),vd.len-vd.rvlen+x);
+    recalc_offsetx=1;
     need_update=1;
   }
+  
+  //adjust panx_velocity
+  if(vd.panx_velocity!=0.f){
+    vd.panx_velocity*=PANX_DECAY;
+    if(fabsf(vd.panx_velocity)<MINIMUM_PANX)vd.panx_velocity=0.f;
+  }
+  
+  Vector2 wm=GetMouseWheelMoveV();
+  //zoomx
 
+  if(wm.y!=0.f)vd.zoomx_velocity+=wm.y*ZOOMX_SCALE*vd.rvlen;
+  if(aum && vd.zoomx_velocity!=0.f  && fabsf(vd.zoomx_velocity)>MINIMUM_ZOOMX ){
+    float left=(GetMouseX()-aum->area->x)/aum->area->w;
+    float zvf=floor(vd.zoomx_velocity);
+    size_t vlen=fmin(vd.len,fmax(MINIMUM_VLEN,vd.rvlen-zvf));
+    if(vlen==MINIMUM_VLEN)vd.zoomx_velocity=0.f;
+    vd.rstart=fmin(vd.len-vlen,fmax(0,(vd.rstart+zvf*left)));
+    vd.rvlen=vlen;
+    vd.zoomx_velocity*=ZOOMX_DECAY;
+    recalc_offsetx=1;
+    need_update=1;
+  }
+  if(recalc_offsetx){
+    vd.offsetx=vd.rstart+vd.rvlen>vd.len?vd.rstart+vd.rvlen-vd.len:vd.rstart<0.f?vd.rstart:vd.rstart-floor(vd.rstart);
+    if(vd.rvlen-fabsf(vd.offsetx)<=MINIMUM_VLEN)vd.offsetx=0;
+  }
 
   //zoomy
-  if(wm.x!=0.f){
-    float temp=vd.zoom.y;
-    vd.zoom.y+=wm.x*ZOOMY_SCALE;
-    vd.zoom.y=MAX(-MAX_ZOOMY,MIN(MAX_ZOOMY,vd.zoom.y));
-    if(temp!=vd.zoom.y)need_update=1;
-  }
+  /* if(wm.x!=0.f){ */
+  /*   float temp=vd.zoom.y; */
+  /*   vd.zoom.y+=wm.x*ZOOMY_SCALE; */
+  /*   vd.zoom.y=MAX(-MAX_ZOOMY,MIN(MAX_ZOOMY,vd.zoom.y)); */
+  /*   if(temp!=vd.zoom.y)need_update=1; */
+  /* } */
 
   //put artist at the middle
   if(aum && has_artists && IsKeyPressed(KEY_M)){
@@ -578,15 +589,14 @@ static void figure_handle_inputs(Figure* figure)
     need_update=1;    
   }
 
-  vd.start=vd.offsetx<0.f?0:vd.offsetx<1.f?vd.rstart:ceil(vd.rstart);
-  vd.vlen=vd.offsetx<0.f?vd.rvlen-fabsf(vd.offsetx):vd.offsetx<1.f?vd.rvlen:vd.rvlen-vd.offsetx;
-
+  vd.start=fmax(0,vd.rstart);
+  vd.vlen=(vd.rvlen+vd.rstart>vd.len)||vd.rstart<0?vd.rvlen-floor(fabsf(vd.offsetx)):vd.rvlen;  
+  ASSERT(vd.start+vd.vlen<=vd.len);  
   vd.draw_len=vd.vlen;
-  for(size_t i=0;i<2;++i){
-    if(vd.draw_len+vd.rstart<vd.len-1)vd.draw_len+=1;
+  for(int _=0;_<2;++_){
+    if(vd.draw_len+vd.start<vd.len)vd.draw_len+=1;
     else break;
-  }
-  
+  }  
   if(need_update)figure->redraw_count++;
   fc->vd=vd;
 }

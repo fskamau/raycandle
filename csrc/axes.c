@@ -175,12 +175,8 @@ void axes_draw(Axes* axes)
 
   BeginScissorMode(NODE_RECT_UNWRAP(area));
   {
-    float or=vd.offsetx/vd.rvlen;   
-    if (vd.offsetx<0.f)area.x-=or*area.w;
-    if (vd.offsetx>0.f && vd.offsetx<1.f){
-      area.x-=or*area.w;
-    }
-    /* DrawRectangleLines(NODE_RECT_UNWRAP(area),RED); */
+    area.x-=(vd.offsetx>1.f?(vd.offsetx-floor(vd.offsetx)):vd.offsetx)/vd.rvlen*area.w;
+    /* DrawRectangleLines(NODE_RECT_UNWRAP(area),BLUE); */
     artist=axes->artist;
     while(artist){
       artist->avt->draw(artist,area);
