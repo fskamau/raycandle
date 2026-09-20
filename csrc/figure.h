@@ -4,6 +4,8 @@
 #include "raylib.h"
 #include "node.h"
 #include "raycandle.h"
+#include "view.h"
+
 
 typedef enum{
   FIGURE_STATE_CREATED=0,
@@ -46,24 +48,45 @@ struct Vd{
 
 };
   
-
-
 typedef struct{
   Rect area;
   int is_visible;
 }Bar;
 
+
+struct AxesView{
+  Artist *artist;
+  size_t artist_len;
+  Legend legend;
+  Limit lim;
+  Label ylabel;
+  size_t ylabel_len, ylabel_padding;
+};
+
+
+typedef struct FigureView FigureView;
+struct FigureView{
+  bool visible;
+  BarSeries *bs;
+  AxesView *av;
+  /* char* title; */
+  Vd vd;
+  FigureView *next;
+};
+
+
+
 struct Fconfig {
   NC *nc;
-  ReadySignal* signal_initialized;
+  ReadySignal* signal_initialized;  
   FigureState state;
+  size_t fv_count;
   Rect* rects;
-  Vd vd;
-  double* xdata;
   char* xformat;
+  FigureView *fv;//base view
   Bar title_bar;
   Bar mode_bar;
   int show_cursors;
-  size_t timeframe;
+  bool figure_view_locked;
 };
  

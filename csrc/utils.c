@@ -50,17 +50,30 @@ void scale_to_limit(const double *data, double *dest, size_t count, Limit srcl, 
 
 Limit get_lim(const double *data, size_t len)
 {
-    if (!data || len == 0) {
-        return (Limit){NAN, NAN};
-    }
+  if (!data || len == 0) {
+    return (Limit){NAN, NAN};
+  }
 
-    Limit lim = {INFINITY, -INFINITY};
-    for (size_t i = 0; i < len; i++) {
-        double val = data[i];
-        if (val < lim.min) lim.min = val;
-        if (val > lim.max) lim.max = val;
-    }
-    return (lim.min <= lim.max) ? lim : (Limit){NAN, NAN};
+  Limit lim = {INFINITY, -INFINITY};
+  for (size_t i = 0; i < len; i++) {
+    double val = data[i];
+    if (val < lim.min) lim.min = val;
+    if (val > lim.max) lim.max = val;
+  }
+  return (lim.min <= lim.max) ? lim : (Limit){NAN, NAN};
+}
+
+
+Limit get_limf(const float *data, size_t len)
+{
+  ASSERT(data && len>1);  
+  Limit lim = {INFINITY, -INFINITY};
+  for (size_t i = 0; i < len; i++) {
+    float val = data[i];
+    if (val < lim.min) lim.min = val;
+    if (val > lim.max) lim.max = val;
+  }
+  return (lim.min <= lim.max) ? lim : (Limit){NAN, NAN};
 }
 
 

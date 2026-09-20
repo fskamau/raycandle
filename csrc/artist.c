@@ -8,19 +8,20 @@
 #include "axes.h"
 
 typedef struct Artist Artist;
-
-static void  artist_candle_init(Artist* artist); //artist->data is double *o,*h,*l,*c
-static void  artist_line_init(Artist* artist);
 static Artist*   get_last_artist(Artist* artist);
-static Limit artist_line_get_limit(Artist* artist);
-static Limit artist_candle_get_limit(Artist* artist);
 
-static void  artist_candle_draw(Artist* artist, Rect area);
-static void  artist_line_draw(Artist* artist, Rect area);
 
-static void artist_candle_draw_icon(Artist* artist, Vector2 start_pos);
-static void artist_line_draw_icon(Artist* artist, Vector2 start_pos);
 
+#define DEFINE_AVT_FUNCS(a)                                        \
+  static void  artist_##a##_init(Artist* artist);                  \
+  static Limit artist_##a##_get_limit(Artist* artist);             \
+  static void  artist_##a##_draw(Artist* artist, Rect area);       \
+  static void  artist_##a##_draw_icon(Artist* artist, Vector2 start_pos)
+
+DEFINE_AVT_FUNCS(line);  
+DEFINE_AVT_FUNCS(candle);
+
+#undef DEFINE_AVT_FUNCS
 
 #define CREATE_AVT(n) static ArtistVTable n##ATV=(ArtistVTable){    \
     .init=artist_##n##_init,                                        \
@@ -32,17 +33,21 @@ static void artist_line_draw_icon(Artist* artist, Vector2 start_pos);
 CREATE_AVT(line);
 CREATE_AVT(candle);
 
+#undef CREATE_AVT
 
 /*
   creates an artist
   artist->avt should deal with nullable *colors and *data
 */
-Artist* artist_create(Axes *axes, ArtistType atype, float thick, Color* colors, const char* label ,void *data)
+
+
+Artist* artist_create(Axes *axes, ArtistType atype, float thick, Color* colors, const char* label, void *data)
 {
   ASSERT(axes);
   ASSERT(axes->fig->fc->state==FIGURE_STATE_CREATED);
-  ASSERTM(axes->fig->fc->vd.len,"len not set; call figure_set_view_data first\n");
-  Artist* artist=  arena_alloc(axes->fig->arena,sizeof(Artist));
+  ASSERTM(axes->fig->fv->vd.len,"len not set; call figure_set_base_bar_series() first\n");
+  ASSERTM(!axes->fig->fc->figure_view_locked, "cannot create artists after calling figure_view_append\n");
+  Artist* artist = arena_alloc(axes->fig->arena,sizeof(Artist));
   memset(artist, 0,sizeof(Artist));
   artist->thick=thick;
   artist->data=data;  
@@ -52,25 +57,26 @@ Artist* artist_create(Axes *axes, ArtistType atype, float thick, Color* colors, 
   if(label){
       artist->label=str_createf_with_arena(axes->fig->arena, "%s", label);
       size_t x=str_len(artist->label);
-      axes->legend.llen=MAX(axes->legend.llen,x);
+      axes->av->legend.llen=MAX(axes->av->legend.llen,x);
     }
   switch(atype){
   case ARTIST_TYPE_LINE:
-    artist_line_init(artist);
     artist->avt=&lineATV;
     break;
   case ARTIST_TYPE_CANDLE:
-    artist_candle_init(artist);
     artist->avt=&candleATV;
     break;
   default:
     ray_error("%s\n", "unknown artist type");
   }
-  if(axes->artist_len)
-    get_last_artist(axes->artist)->next=artist;
+
+  artist->avt->init(artist);
+  if(axes->av->artist_len)
+    get_last_artist(axes->av->artist)->next=artist;
   else
-    axes->artist=artist;
-  axes->artist_len+=1;
+    axes->av->artist=artist;
+  
+  axes->av->artist_len+=1;
   return artist;
 }
 
@@ -79,7 +85,7 @@ static void  artist_line_init(Artist* artist)
   Axes* axes=artist->axes;
   ASSERT(artist->data);
   LineData *ldata=artist->data;
-  size_t len=axes->fig->fc->vd.len;
+  size_t len=axes->fig->fv->vd.len;
   Arena* arena=axes->fig->arena;
   assert(ldata->data);
   LineData* pdata=arena_alloc(arena, sizeof(LineData));
@@ -92,15 +98,16 @@ static void  artist_line_init(Artist* artist)
   else *colors=axes_get_next_tableau_t10_color(axes);
   artist->colors=colors;
   artist->data=pdata;
+
 }
 
 
-void artist_line_set_data(Artist* artist,  double*data, size_t start, size_t len)
+void artist_line_set_data(Artist* artist,  float* data, size_t start, size_t len)
 {
   ASSERT(artist && data);
   ASSERT(len>0);
-  Fconfig *fc=artist->axes->fig->fc;
-  size_t vd_len=fc->vd.len;
+  FigureView *fv=artist->axes->fig->fv;
+  size_t vd_len=fv->vd.len;
   LineData* ldata=artist->data;
   ASSERTM(vd_len,"invalid state; create at least 1 artist with segmented data\n");
   if(ldata->is_splined)
@@ -114,8 +121,8 @@ void artist_candle_set_data(Artist* artist, double*data, size_t start, size_t le
 {
   ASSERT(artist && data);
   ASSERT(len>0);
-  Fconfig *fc=artist->axes->fig->fc;
-  size_t vd_len=fc->vd.len;
+  FigureView *fv=artist->axes->fig->fv;
+  size_t vd_len=fv->vd.len;
   double *dest=artist->data;
   ASSERTM(vd_len,"invalid state; create at least 1 artist with segmented data\n");
   ASSERTM(start+len<=vd_len, "slicing index error\n");
@@ -127,10 +134,10 @@ static void  artist_candle_init(Artist* artist)
 {
   assert(artist->data);
   Axes* axes=artist->axes;
-  size_t len=axes->fig->fc->vd.len;
+  size_t len=axes->fig->fv->vd.len;
   Arena* arena=axes->fig->arena;
   size_t ta=sizeof(double)*len*4;
-  double* cd=arena_alloc(arena,ta);
+  float* cd=arena_alloc(arena,ta);  
   memcpy(cd, artist->data,ta);
   Color* colors=arena_alloc(arena,sizeof(*artist->colors)*2);
   if(artist->colors)memcpy(colors,artist->colors,sizeof(Color)*2);
@@ -143,6 +150,8 @@ static void  artist_candle_init(Artist* artist)
 }
 
 
+
+
 static Artist* get_last_artist(Artist* artist)
 {
   while(artist->next)
@@ -153,19 +162,19 @@ static Artist* get_last_artist(Artist* artist)
 
 static Limit artist_line_get_limit(Artist* artist)
 {
-  Vd vd=artist->axes->fig->fc->vd;
+  Vd vd=artist->axes->fig->fv->vd;
   LineData *l=artist->data;
-  if(l->is_splined)  return get_lim(l->data+vd.start,vd.vlen);
-  return get_lim(l->data+2,2);
+  if(l->is_splined)  return get_limf(l->data+vd.start,vd.vlen);
+  return get_limf(l->data+2,2);
 }
 
 static Limit artist_candle_get_limit(Artist* artist){
   Axes* axes=artist->axes;
-  Vd vd=axes->fig->fc->vd;
-  size_t len=axes->fig->fc->vd.len;
-  double *data=artist->data;
-  Limit l1=get_lim(data+(len*1)+vd.start,vd.vlen);//o,[h],l,c
-  Limit l2=get_lim(data+(len*2)+vd.start,vd.vlen);//o,h,[l],c
+  Vd vd=axes->fig->fv->vd;
+  size_t len=axes->fig->fv->vd.len;
+  float *data=artist->data;
+  Limit l1=get_limf(data+(len*1)+vd.start,vd.vlen);//o,[h],l,c
+  Limit l2=get_limf(data+(len*2)+vd.start,vd.vlen);//o,h,[l],c
   double array_lim[4]={l1.min,l1.max,l2.min,l2.max};
   Limit lim=get_lim(array_lim,4);
   return lim;
@@ -176,23 +185,23 @@ static Limit artist_candle_get_limit(Artist* artist){
 static void  artist_line_draw(Artist* artist, Rect area)
 {
   Axes* axes=artist->axes;
-  Vd vd=axes->fig->fc->vd;
+  Vd vd=axes->fig->fv->vd;
   LineData *ldata=artist->data;
-  double *data=ldata->data;
+  float *data=ldata->data;
   Limit destl=(Limit){.min=area.h+area.y,.max=area.y};
   if(ldata->is_splined){
     size_t rc=1;
     data+=vd.start;     
     for(size_t i=1;i<vd.draw_len;++i,++rc){
-      DrawLineEx((Vector2){axes->w*(rc-1)+area.x,scale_to_limitf(data[rc-1],axes->lim,destl)},
-                 (Vector2){axes->w*rc+area.x,scale_to_limitf(data[rc],axes->lim,destl)},artist->thick,*artist->colors);
+      DrawLineEx((Vector2){axes->w*(rc-1)+area.x,scale_to_limitf(data[rc-1],axes->av->lim,destl)},
+                 (Vector2){axes->w*rc+area.x,scale_to_limitf(data[rc],axes->av->lim,destl)},artist->thick,*artist->colors);
     }    
   }
   else{
     double temp[4];
     memcpy(temp,data,4*sizeof(*temp));
     scale_to_limit(temp+0,temp+0, 2, axes->fig->xlim,(Limit){area.x,area.x+area.w});
-    scale_to_limit(temp+2,temp+2, 2, axes->lim, destl);
+    scale_to_limit(temp+2,temp+2, 2, axes->av->lim, destl);
     DrawLineEx((Vector2){temp[0],temp[2]},(Vector2){temp[1],temp[3]},artist->thick,*artist->colors);
   }
 }
@@ -200,8 +209,8 @@ static void  artist_line_draw(Artist* artist, Rect area)
 static void  artist_candle_draw(Artist* artist, Rect area)
 {
   Axes* axes=artist->axes;
-  Vd vd=axes->fig->fc->vd;
-  double *data=artist->data;
+  Vd vd=axes->fig->fv->vd;
+  float *data=artist->data;
   float w_use_ratio=0.6;
   float w_use=w_use_ratio*axes->w;
   size_t rc=0;
@@ -213,7 +222,7 @@ static void  artist_candle_draw(Artist* artist, Rect area)
       data[vd.len*3+i],
     };
     Limit limy=(Limit){.min=area.y+area.h,.max=area.y};
-    scale_to_limit(cl,cl,4,axes->lim,limy);
+    scale_to_limit(cl,cl,4,axes->av->lim,limy);
     float sx=(axes->w*rc)+area.x;
     Color c=artist->colors[(cl[0]>cl[3])?0:1];
     double min_oc=fmin(cl[0],cl[3]);
@@ -237,3 +246,5 @@ static void artist_candle_draw_icon(Artist* artist, Vector2 start_pos)
   int y = theme.font_size / 3;
   DrawRectangleLines(start_pos.x, start_pos.y + y, LEGEND_ICON_LEN,theme.font_size - y * 2,*artist->colors);
 }
+
+

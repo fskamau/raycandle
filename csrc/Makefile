@@ -10,7 +10,7 @@ TARGET_FOLDER := ./build
 PY_PKG_FOLDER := ../raycandle
 ASSETS_FOLDER := ./assets
 
-SOURCES := utils.c str.c figure.c node.c axes.c ready_signal.c artist.c
+SOURCES := utils.c str.c figure.c node.c axes.c ready_signal.c artist.c view.c
 OBJECTS := $(patsubst %.c,$(TARGET_FOLDER)/%.o,$(SOURCES))
 DEPS    := $(OBJECTS:.o=.d)
 

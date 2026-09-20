@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 
 typedef struct Arena Arena;
  struct Arena{
@@ -15,6 +16,7 @@ typedef struct Arena Arena;
 
 Arena *arena_create(size_t bytes);
 void  *arena_alloc(Arena *arena, size_t bytes);
+void *arena_calloc(Arena *arena, size_t bytes, unsigned char fill_value);
 void   arena_free(Arena *arena);
 void   arena_print(Arena *arena);
 void  arena_reset(Arena* arena);
@@ -53,6 +55,14 @@ void *arena_alloc(Arena *arena, size_t bytes) {
     size_t rem=arena->cap-aligned_offset;
     ARENA_ERROR("arena_alloc: Out of memory: needs %'zub more; req (%'zu ~=%'.4fMB) cap (%'zub ~= %'.4fMB) free %'zu)\n",bytes-rem,bytes,(double)bytes/(1024*1024),arena->cap,(double)arena->cap/(1024*1024), rem);
   }
+}
+
+
+void *arena_calloc(Arena *arena, size_t bytes, unsigned char fill_value)
+{
+  void *mem=arena_alloc(arena,bytes);
+  memset(mem,fill_value,bytes);
+  return mem;
 }
 
 void arena_free(Arena *arena) {
