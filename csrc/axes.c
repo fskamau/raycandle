@@ -24,7 +24,7 @@ void axes_update_ylim(Axes* axes)
   Vd vd=axes->fig->fv->vd;
 
   ASSERT(vd.rvlen!=0);
-  if(axes->lim_fixed)lim=axes->av->lim;
+  if(axes->av->lim_fixed)lim=axes->av->lim;
   else{
     while(artist){
       if(!artist->is_limitable)goto axes_update_ylim_continue;
@@ -190,7 +190,7 @@ void axes_draw(Axes* axes)
   Artist* artist=axes->av->artist;
   if(!artist)return;
 
-  /* BeginScissorMode(NODE_RECT_UNWRAP(area)); */
+  BeginScissorMode(NODE_RECT_UNWRAP(area));
   {
     area.x-=(vd.offsetx>1.f?(vd.offsetx-floor(vd.offsetx)):vd.offsetx)/vd.rvlen*area.w;
     /* DrawRectangleLines(NODE_RECT_UNWRAP(area),BLUE); */
@@ -200,7 +200,7 @@ void axes_draw(Axes* axes)
       artist=artist->next;
     }
   }
-  /* EndScissorMode(); */
+  EndScissorMode();
   axes_draw_ylabel(axes);
   axes_draw_legend(axes);
 }
@@ -272,5 +272,5 @@ void axes_set_ylim(Axes* axes,double min, double max)
     .min=min,
     .max=max,
   };
-  axes->lim_fixed=1;
+  axes->av->lim_fixed=1;
 }

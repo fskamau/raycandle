@@ -14,6 +14,7 @@ from .exceptions import *
 from pathlib import Path
 from threading import Event
 
+
 FPATH = Path(os.path.dirname(__file__))
 LIB_NAME = FPATH / "libraycandle.so"
 CDEF_NAME = FPATH / "raycandle.h"
@@ -61,7 +62,6 @@ class Figure:
             raise Exception
         self._wait_closed=Event()
         self._load_lib()
-        self._xdata: np.ndarray | None = None
         self._pxdata = self._api.null
         self._api.fig = self._api.lib.figure_create(rows, cols)
         theme = self._api.fig.theme
@@ -126,28 +126,40 @@ class Figure:
         """
         self._api.fig.force_update = True
 
+    def add_view(self,df:pd.DataFrame,title:str):
+        bs=self.__create_bar_series__(title,df)
+        self._api.lib.figure_add_view(self._api.fig,bs)
+        
+
     @window_not_closed
     def set_title(self, title: str) -> None:
         self._api.lib.figure_set_title(self._api.fig, self._api.cstr(title))
 
-    @window_not_closed
-    def validate_xdata(self, artist: Artist):
-        if not hasattr(artist, "xdata"):
-            raise AttributeError(f"expects an attribute `xdata` to be set for {type(artist)}")
-        if self._xdata is None:
-            timeframe = np.bincount([x for x in np.diff(artist.xdata) if not np.isnan(x)]).argmax()
-            if len(pd.Series(artist.xdata).dropna().diff().iloc[1:].drop_duplicates()) != 1:
-                warnings.warn(f"index spacing is not equal, the most occurrent spacing ({timeframe}) will be applied", RuntimeWarning)
-            self._xdata =  artist.xdata.copy().to_numpy(dtype=np.float64)
-            pxdata = self._api.ffi.cast("double*", self._xdata.ctypes.data)
-            self._api.lib.figure_set_view_data(self._api.fig, len(self._xdata), self.xdata_format.encode(), pxdata, timeframe)
-            self._api.total_len=len(self._xdata)
-        else:
-            assert len(self._xdata)==len(artist.xdata) ,"all xdata must be same length"
-            if not np.all(self._xdata == artist.xdata):
-                raise NotImplementedError("got different xdata; all artist must share x-axis")
-        del artist.xdata
+    def init_view(self,df:pd.DataFrame, title:str=None):
+        if self._api.base_view_set:
+            raise Exception("base view already called; try figure.add_view")
+        self._api.lib.figure_set_base_bar_series(self._api.fig,self.__create_bar_series__(df,title))
+        self._api.base_view_set=True
 
+    def __create_bar_series__(self,df:pd.DataFrame, title:str=None):
+        assert len(df.columns)==4
+        df.columns=[x for x in 'ohlc']
+        dfd={x:self._api.ffi.cast('float*',df[x].to_numpy(np.float32).ctypes.data) for x in df.columns}
+        index=pd.Series(df.index)
+        timeframe = np.bincount([x for x in np.diff(index) if not np.isnan(x)]).argmax()
+        if len(pd.Series(index).dropna().diff().iloc[1:].drop_duplicates()) != 1:
+            warnings.warn(f"index spacing is not equal, the most occurrent spacing ({timeframe}) will be applied", RuntimeWarning)    
+            
+        return self._api.lib.bar_series_create(
+            timeframe,
+            len(df),
+            dfd,
+            self._api.ffi.cast('double*',index.to_numpy(dtype=np.float64).ctypes.data),
+            self._api.arena,
+            self._api.cstr(title))
+                               
+        # BarSeries* bar_series_create(size_t timeframe, size_t len, Candles candles, double* epochs, Arena *arena, const char *title);
+        
     @window_not_closed
     def set_xdata(self, xdata: pd.Index, timeframe: int, start: int=0) -> None:
         """

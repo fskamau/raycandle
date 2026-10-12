@@ -1,9 +1,6 @@
 #include <stddef.h>
 #include "utils.h"
-
-typedef struct {
-  float *o,*h,*l,*c;
-} Candles;
+#include "raycandle.h"
 
 
 typedef enum {
@@ -22,8 +19,6 @@ typedef enum {
 typedef struct BarSeries BarSeries;
 
 
-
-
 struct BarSeries  {
   size_t curr_epoch,timeframe, len;
   Candles candles;
@@ -33,5 +28,6 @@ struct BarSeries  {
 };
 
 
-BarSeries* bar_series_create(size_t timeframe, size_t len, Candles candles, double* epochs, Arena *arena, const char *title);
-void bar_series_update(BarSeries *bs, double epoch, float price);
+
+extern BarSeries* bar_series_create(size_t timeframe, size_t len, Candles candles, double* epochs, Arena *arena, const char *title);
+extern void bar_series_update(BarSeries *bs, double epoch, float price);

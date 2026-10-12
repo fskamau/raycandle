@@ -496,7 +496,7 @@ if(bs){
 
 static void figure_handle_inputs(Figure* figure)
 {
-  if(!figure->fv->bs)return; //cant continue without epochs and len
+  if(!figure->fv->bs)return; //cannot continue without epochs and len
   Vd vd=figure->fv->vd;
   Vector2 md=GetMouseDelta();
   Axes* aum=get_axes_under_mouse(figure);
@@ -613,7 +613,7 @@ static void figure_handle_inputs(Figure* figure)
   ASSERT(vd.start+vd.vlen<=vd.len);  
   vd.draw_len=vd.vlen;
   for(int _=0;_<2;++_){
-    if(vd.draw_len+vd.start<vd.len)vd.draw_len+=1;
+    if(vd.draw_len+vd.start<=vd.len)vd.draw_len+=1;
     else break;
   }  
   if(need_update)figure->redraw_count++;
@@ -685,7 +685,7 @@ static void figure_axes_init(Figure* figure)
 static FigureView *figure_view_create(Figure* figure)
 {
   FigureView *fv=arena_calloc(figure->arena, sizeof(*fv),0);
-  fv->av=arena_calloc(figure->arena,sizeof(*fv->av)*figure->axes_count,0);
+  fv->av=arena_calloc(figure->arena,sizeof(AxesView)*figure->axes_count,0);
 
   for(size_t i=0;i<figure->axes_count;++i){
     fv->av[i].ylabel.format=str_create_with_arena(figure->arena,AXES_YLABEL_MAX_LEN);
@@ -703,7 +703,9 @@ size_t figure_add_view(Figure* figure, BarSeries *bs)
   while(temp_fv->next)temp_fv=temp_fv->next;
   temp_fv->next=fv;
   /* figure->fc->figure_view_locked=true; //cannot create any more artists */
-  return ++figure->fc->fv_count;
+  figure->fc->fv_count++;
+  figure_move_view_on_top(figure, figure->fc->fv_count);
+  return   figure->fc->fv_count;
 }
 
 

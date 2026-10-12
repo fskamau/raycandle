@@ -30,6 +30,7 @@ def window_not_closed(func: _T) -> _T:
 
 
 class RApi:
+    ARENA_MAX_SIZE = 1024**2
     def __init__(self, lib: Any, fig: Any, ffi: FFI, figure: Figure):
         self.fig = fig
         self.ffi = ffi
@@ -38,6 +39,8 @@ class RApi:
         self.closed = False
         self.figure = figure
         self.total_len=0
+        self.base_view_set=False
+        self.arena=lib.arena_create(RApi.ARENA_MAX_SIZE)
 
     def cstr(self, s: Optional[str]):
         return self.null if s is None else self.ffi.new("char[]", s.encode("utf-8"))
@@ -92,6 +95,7 @@ class Artist(RApi):
 
     def __repr__(self)->str:
         return f"Artist(label='{'' if self.__artist__.label==self._api.null else self._api.ffi.string(self.__artist__.label).decode()}')"
+
     
 class Color:
     def __init__(self, r: int, g: int, b: int, a: int = 0xFF):

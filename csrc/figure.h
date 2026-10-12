@@ -61,6 +61,8 @@ struct AxesView{
   Limit lim;
   Label ylabel;
   size_t ylabel_len, ylabel_padding;
+  size_t tableau_t10_index;
+  int lim_fixed;
 };
 
 

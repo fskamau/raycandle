@@ -1,5 +1,6 @@
 #include "view.h"
 #include <string.h>
+#include "raycandle.h"
 
 BarSeries* bar_series_create(size_t timeframe, size_t len, Candles candles, double* epochs, Arena *arena, const char *title)
 {
@@ -27,8 +28,7 @@ BarSeries* bar_series_create(size_t timeframe, size_t len, Candles candles, doub
   if(title)bs->title=str_createf_with_arena(arena,"%s",title);
   return bs;
 }
-
-
+  
 
 void bar_series_update(BarSeries *bs, double epoch, float price)
 {
@@ -58,6 +58,5 @@ void bar_series_update(BarSeries *bs, double epoch, float price)
     bs->epochs[lm1]=iepoch;
     bs->ur=UPDATE_REASON_TICK;
   }
-
 }
 

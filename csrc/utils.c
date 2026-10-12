@@ -3,6 +3,7 @@
 #include <math.h>
 #include "raycandle.h"
 #include <time.h>
+#include "figure.h"
 
 static const Color tableau_colors[10] = {
     {31, 119, 191, 255},  // Blue
@@ -79,11 +80,11 @@ Limit get_limf(const float *data, size_t len)
 
 
 
-Color axes_get_next_tableau_t10_color(Axes *axes)
+Color axes_get_next_tableau_t10_color(size_t* cur)
 {
-  ASSERT(axes->tableau_t10_index < 10);
-  Color color = tableau_colors[(axes->tableau_t10_index++)];
-  axes->tableau_t10_index %= 10;
+  ASSERT(*cur < 10);
+  Color color = tableau_colors[(*cur)++];
+  *cur %= 10;
   return color;
 }
 

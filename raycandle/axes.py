@@ -37,8 +37,6 @@ class Axes:
                 artist = Line(pd.Series(artist), **kwargs)
             else:
                 raise Exception(f"{type(artist)} may need to subclass {Artist}")
-        if hasattr(artist, "xdata"):
-            self._api.figure.validate_xdata(artist)
         artist._api = self._api
         args = artist._get_create_args()
         artist.__artist__ = self._api.lib.artist_create(self._axes, *args)

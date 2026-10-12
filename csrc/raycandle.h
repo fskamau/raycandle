@@ -40,7 +40,8 @@ typedef struct {
 
 typedef RColor Color;
 typedef void Font;
-
+typedef struct Arena Arena;
+Arena *arena_create(size_t bytes);
 
 #endif // RAYLIB_H
 
@@ -92,8 +93,7 @@ struct Axes{
   AxesView *av;
   float w;
   Figure *fig;
-  size_t tableau_t10_index;
-  int lim_fixed;
+
 };
 
 typedef struct Theme Theme;
@@ -157,7 +157,6 @@ void figure_wait_for_InitWindow(Figure* figure);
 
 void figure_set_theme(Figure* figure, Theme theme);
 void figure_set_xformat(Figure* figure, const char* xformat); //change default timeseries xformat 
-/* void figure_set_title(Figure* figure, char *title); */
 void figure_set_window_title(Figure* figure, char *wtitle);
 void figure_show(Figure* figure, char* window_title, int width, int height, int fps); //run the disp loop until the window is closed. for more control look at figure.h use the function below
 
@@ -173,6 +172,13 @@ void figure_update(Figure* figure); //call every loo[ to update the figure e.g a
 
 
 typedef struct BarSeries BarSeries;
+typedef struct {
+  float *o,*h,*l,*c;
+} Candles;
+
+
+BarSeries* bar_series_create(size_t timeframe, size_t len, Candles candles, double* epochs, Arena *arena, const char *title);
+void bar_series_update(BarSeries *bs, double epoch, float price);
 void figure_set_base_bar_series(Figure* figure, BarSeries *bs);
 size_t figure_add_view(Figure* figure, BarSeries *bs); //returns the new index that can be used to move it on top
 void figure_move_view_on_top(Figure* figure, size_t view_id);

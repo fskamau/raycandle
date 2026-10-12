@@ -43,6 +43,7 @@ CREATE_AVT(candle);
 
 Artist* artist_create(Axes *axes, ArtistType atype, float thick, Color* colors, const char* label, void *data)
 {
+  printf("%p\n",data);
   ASSERT(axes);
   ASSERT(axes->fig->fc->state==FIGURE_STATE_CREATED);
   ASSERTM(axes->fig->fv->vd.len,"len not set; call figure_set_base_bar_series() first\n");
@@ -95,7 +96,7 @@ static void  artist_line_init(Artist* artist)
   memcpy(pdata->data,ldata->data,tocp);
   Color* colors=arena_alloc(arena,sizeof(Color));
   if(artist->colors)*colors=*artist->colors;
-  else *colors=axes_get_next_tableau_t10_color(axes);
+  else *colors=axes_get_next_tableau_t10_color(&axes->av->tableau_t10_index);
   artist->colors=colors;
   artist->data=pdata;
 
@@ -142,8 +143,8 @@ static void  artist_candle_init(Artist* artist)
   Color* colors=arena_alloc(arena,sizeof(*artist->colors)*2);
   if(artist->colors)memcpy(colors,artist->colors,sizeof(Color)*2);
   else {
-    colors[0]=axes_get_next_tableau_t10_color(axes);
-    colors[1]=axes_get_next_tableau_t10_color(axes);
+    colors[0]=axes_get_next_tableau_t10_color(&axes->av->tableau_t10_index);
+    colors[1]=axes_get_next_tableau_t10_color(&axes->av->tableau_t10_index);
   }
   artist->colors=colors;
   artist->data=cd;

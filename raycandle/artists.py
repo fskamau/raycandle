@@ -17,7 +17,7 @@ class Line(Artist):
             self.xdata=data.index
         self.is_relative=is_relative
         self.is_splined=is_splined
-        self.ydata = data.to_numpy(dtype=np.float64)
+        self.ydata = data.to_numpy(dtype=np.float32)
         if label is None and label_from_data:
             label = str(data.name) if data.name is not None else None
         self.label = label
@@ -30,7 +30,7 @@ class Line(Artist):
     def _get_create_args(self) -> tuple[Any]:
         line_data = self._api.ffi.new("LineData*")
         line_data.is_splined = self.is_splined
-        line_data.data=self._pdata = self._api.ffi.cast("double*",self.ydata.ctypes.data)
+        line_data.data=self._pdata = self._api.ffi.cast("float*",self.ydata.ctypes.data)
         return (
             ArtistType.LINE,
             self.thick,                                   
@@ -42,8 +42,8 @@ class Line(Artist):
     @override
     @window_not_closed
     def set_data(self, data: pd.Series) -> None:
-        self.ydata = data.to_numpy(dtype=np.float64)
-        self.__artist__.gdata.ydata = self._api.ffi.cast("double*", self.ydata.ctypes.data)
+        self.ydata = data.to_numpy(dtype=np.float32)
+        self.__artist__.gdata.ydata = self._api.ffi.cast("float*", self.ydata.ctypes.data)
 
     @override
     def set_data(self, data: pd.Series, start:int=0) -> None:
@@ -51,8 +51,8 @@ class Line(Artist):
         copy `data` to the internal buffer from `start` 
         """
         x=len(data)
-        df=data.to_numpy(dtype=np.float64)
-        self._api.lib.artist_line_set_data(self.__artist__, self._api.ffi.cast('double*',df.ctypes.data), start ,x)
+        df=data.to_numpy(dtype=np.float32)
+        self._api.lib.artist_line_set_data(self.__artist__, self._api.ffi.cast('float*',df.ctypes.data), start ,x)
         
 class Candle(Artist):
     GREEN = Color.fromhex(0x079981ff)
@@ -63,12 +63,13 @@ class Candle(Artist):
             raise Exception("len of candle columns should be 4")
         self.__data_names__ = df.columns
         self.xdata = df.index
-        self.ydata = df.to_numpy(dtype=np.float64).flatten(order="F")
+        self.ydata = df.to_numpy(dtype=np.float32).flatten(order="F")
         if label_from_data and label is None:
             label = f"Candlestick({','.join([str(x) for x in df.columns])})"
         self.label = label
         self.color=[tuple(x) for x in [bull,bear]]
         self.thick = thick
+
 
     
     @override
@@ -76,9 +77,10 @@ class Candle(Artist):
         return (
             ArtistType.CANDLE,
             self.thick,
-            self._api.ffi.new("RColor[2]",self.color) if self.color is not None else self._api.ffi.NULL,
-            self._api.cstr(self.label),
-            self._api.ffi.cast("double*", self.ydata.ctypes.data),
+            # self._api.ffi.new("RColor[2]",self.color) if self.color is not None else self._api.ffi.NULL,
+            # self._api.cstr(self.label),
+            self._api.null,self._api.null,
+            self._api.ffi.cast("float*", self.ydata.ctypes.data),
         )
 
     @override
@@ -87,5 +89,5 @@ class Candle(Artist):
         copy `data` to the internal buffer from `start` 
         """
         x=len(data)
-        df=data.to_numpy(dtype=np.float64).flatten(order="F")
-        self._api.lib.artist_candle_set_data(self.__artist__, self._api.ffi.cast('double*',df.ctypes.data), start ,x)
+        df=data.to_numpy(dtype=np.float32).flatten(order="F")
+        self._api.lib.artist_candle_set_data(self.__artist__, self._api.ffi.cast('float*',df.ctypes.data), start ,x)
