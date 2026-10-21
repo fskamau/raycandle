@@ -14,7 +14,7 @@ static void axes_set_ylabel_len(Axes* axes);
 static void axes_draw_ylabel(Axes* axes);
 static void axes_draw_legend(Axes *axes);
 static inline size_t get_axes_index_under_mouse(Figure *figure);
-  
+
 void axes_update_ylim(Axes* axes)
 {
 
@@ -59,6 +59,13 @@ void axes_update_ylim(Axes* axes)
     axes->av->lim=lim;
   }
 
+  if(!isfinite(lim.min) || !isfinite(lim.max)) {
+    axes->av->lim=(Limit){0,1};
+  } else if (fabs(axes->av->lim.max-axes->av->lim.min)<1e-10) {
+    double pad=fmax(0.01,fabs(lim.min)*0.01);
+    axes->av->lim.min-=pad;
+    axes->av->lim.max+=pad;
+  }
   if(axes->fig->theme.show_ylabel)axes_set_ylabel_len(axes);//measure out label
   axes->w=axes->area->w/(vd.rvlen);
 }

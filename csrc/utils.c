@@ -22,7 +22,7 @@ static const Color tableau_colors[10] = {
 double scale_to_limitf(double val, Limit src, Limit dest)
 {
     if (isnan(val) || isnan(src.min) || isnan(src.max) || (src.max == src.min)) {
-        return NAN; 
+        return NAN;
     }
     double normalized = (val - src.min) / (src.max - src.min);
     double converted = dest.min + (normalized * (dest.max - dest.min));
@@ -31,8 +31,8 @@ double scale_to_limitf(double val, Limit src, Limit dest)
 
 
 void scale_to_limit(const double *data, double *dest, size_t count, Limit srcl, Limit destl)
-{  
-  ASSERT(data && dest &&count);    
+{
+  ASSERT(data && dest &&count);
   double srcl_span = srcl.max - srcl.min;
   double destl_span = destl.max - destl.min;
   /* ASSERTM(srcl_span != 0.0, "limit.min == limit.max"); */
@@ -67,7 +67,7 @@ Limit get_lim(const double *data, size_t len)
 
 Limit get_limf(const float *data, size_t len)
 {
-  ASSERT(data && len>1);  
+  ASSERT(data && len>1);
   Limit lim = {INFINITY, -INFINITY};
   for (size_t i = 0; i < len; i++) {
     float val = data[i];
@@ -89,7 +89,7 @@ Color axes_get_next_tableau_t10_color(size_t* cur)
 }
 
 
-  
+
 
 
 float align_text(Font *font, const char *text, int width, int font_size, int spacing, Alignment alignment)

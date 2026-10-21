@@ -21,7 +21,7 @@ typedef struct BarSeries BarSeries;
 
 struct BarSeries  {
   size_t curr_epoch,timeframe, len;
-  Candles candles;
+  /* Candles live in their Artist, not in BarSeries. */
   UpdateReason ur;
   double* epochs;
   char* title;
@@ -29,5 +29,6 @@ struct BarSeries  {
 
 
 
-extern BarSeries* bar_series_create(size_t timeframe, size_t len, Candles candles, double* epochs, Arena *arena, const char *title);
-extern void bar_series_update(BarSeries *bs, double epoch, float price);
+BarSeries* bar_series_create(size_t timeframe, size_t len, const double* epochs, Arena *arena, const char *title);
+/* Return 1 on candle rollover, 0 for same timeframe, -1 for stale tick. */
+int bar_series_update_epoch(BarSeries* bs, double epoch);

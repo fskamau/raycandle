@@ -10,26 +10,13 @@
 typedef enum{
   FIGURE_STATE_CREATED=0,
   FIGURE_STATE_RUNNING,
-  FIGURE_STATE_STOPPED,  
+  FIGURE_STATE_STOPPED,
 }FigureState;
 
 
 typedef  struct Figure Figure;
 typedef struct NC NC;
 typedef struct Vd Vd; //view data
-
-typedef struct JID JID;
-struct JID {
-  double rindex;
-  char *epoch;
-};//jump index data
-typedef struct{
-  size_t len;
-  size_t cap;
-  JID* jid;
-  Rect area;
-}JIS;//jump index store;
-
 
 struct Vd{
   size_t len;
@@ -44,10 +31,9 @@ struct Vd{
   Axes* aum;
   int wait_mouse_up;
   int redraw_modebar;
-  JIS* jis;
 
 };
-  
+
 typedef struct{
   Rect area;
   int is_visible;
@@ -62,6 +48,7 @@ struct AxesView{
   Label ylabel;
   size_t ylabel_len, ylabel_padding;
   size_t tableau_t10_index;
+  int legend_measured;
   int lim_fixed;
 };
 
@@ -80,7 +67,7 @@ struct FigureView{
 
 struct Fconfig {
   NC *nc;
-  ReadySignal* signal_initialized;  
+  ReadySignal* signal_initialized;
   FigureState state;
   size_t fv_count;
   Rect* rects;
@@ -91,4 +78,3 @@ struct Fconfig {
   int show_cursors;
   bool figure_view_locked;
 };
- 

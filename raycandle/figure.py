@@ -1,185 +1,178 @@
+"""Simple multi-view plotting on top of raylib + an ABI-stable CFFI surface."""
+from __future__ import annotations
+
+import platform
 import threading
-import warnings
-from typing import Any, NoReturn, Type
-import os
-import cffi
-import numpy as np
-import pandas as pd
-import signal
-from .axes import Axes
-from .bases import Artist, RApi, window_not_closed
-from .axes import Axes
-from .defines import *
-from .exceptions import *
+from contextlib import contextmanager
 from pathlib import Path
-from threading import Event
+
+import cffi
+
+from .bases import RApi, window_not_closed
+from .defines import LegendPosition
+from .view import View
+from .collector import Collector
+
+_PACKAGE=Path(__file__).resolve().parent
 
 
-FPATH = Path(os.path.dirname(__file__))
-LIB_NAME = FPATH / "libraycandle.so"
-CDEF_NAME = FPATH / "raycandle.h"
-ASSET_PATH=FPATH/"assets"
-
-
-class Collector:
-    def __init__(self, fig: "Figure", *args: ["Artist"]):
-        self._artists, self.__data_names__ = [], set()
-        if not isinstance(fig, Figure):
-            raise TypeError(f"expected a Figure instance got {type(fig)}")
-        self._fig = fig
-        self._set_dict([args])
-
-    def __getitem__(self, index):
-        return self._artists[index]
-
-    def _set_dict(self, a):
-        if issubclass(type(a), Artist):
-            if not hasattr(a, "__data_names__"):
-                raise NotImplementedError(f"artist {a} has no attribute '__data_names__'")
-            self._artists.append(a)
-        elif isinstance(a, (tuple, list)):
-            tuple(map(self._set_dict, a))
-        else:
-            raise NotImplementedError(f"{type(a)} is not an Artist")
-
-    def update(self, df: pd.DataFrame, timeframe:int):
-        l=self._fig._api.total_len
-        if len(df) > l:
-            raise RuntimeError(f"length mismatch; prev {l} new {len(df)}")
-        start=l-len(df)
-        self._fig.set_xdata(df.index, timeframe, start=start)
-        if diff := self.__data_names__.difference(df.columns):
-            raise ValueError(f"missing column names {diff}")
-        tuple(map(lambda x: x.set_data(df[x.__data_names__],start=start), self._artists))
-        self._fig._api.fig.redraw_modebar+=1  #trigger just the redraw
-        
 
 class Figure:
-    def __init__(self, rows: int = 1, cols: int = 1, xdata_format="[%d-%b %a %H:%M:%S]"):
-        self._api: RApi
-        self.xdata_format = xdata_format
-        if rows < 1 or cols < 1:
-            raise Exception
-        self._wait_closed=Event()
-        self._load_lib()
-        self._pxdata = self._api.null
-        self._api.fig = self._api.lib.figure_create(rows, cols)
-        theme = self._api.fig.theme
-        ic,fp=self._api.cstr(str(ASSET_PATH/"icon.png")),self._api.cstr(str(ASSET_PATH/"font.ttf"))
-        
-        theme.icon_path =ic
-        theme.font_path = fp
-        self._api.lib.figure_set_theme(self._api.fig, theme)
-        self._api.this = self        
+    def __init__(self, rows=1, cols=1, *, xdata_format="%Y/%m/%d %H:%M:%S"):
+        if not isinstance(rows,int) or not isinstance(cols,int) or rows<1 or cols<1:
+            raise ValueError("rows and cols must be positive integers")
+        self.rows,self.cols=rows,cols
+        ffi=cffi.FFI()
+        header = _PACKAGE / "raycandle.h"
+        if not header.is_file():
+            raise RuntimeError(
+                f"Missing generated CFFI header: {header}. "
+                "Build the native extension first (see README.md)."
+            )
+        ffi.cdef(header.read_text(encoding="utf8"))
+        if platform.system()=="Windows":
+            library="raycandle.dll"
+        elif platform.system()=="Darwin":
+            library="libraycandle.dylib"
+        else:
+            library="libraycandle.so"
+        target=_PACKAGE/library
+        if not target.is_file():
+            raise RuntimeError(f"Missing native library: {target}. Build with 'cmake --build build' (see README.md).")
+        lib=ffi.dlopen(str(target))
+        self._api=RApi(lib,ffi,self)
+        self._api.fig=lib.figure_create(rows,cols)
+        lib.figure_set_xformat(self._api.fig,self._api.cstr(xdata_format))
+        font=_PACKAGE/"assets"/"iosevka-regular.ttf"
+        if font.is_file():
+            lib.figure_set_font_path(self._api.fig,self._api.cstr(str(font)))
+        self.views=[View(self,0)]
+        self._closed_event=threading.Event()
+        self._thread=None
+        self._show_started=False
+        self._window_title=None
 
-        self.ax: list[Axes]
-        self._init()
+    @property
+    def active_view(self):
+        return int(self._api.lib.figure_get_active_view(self._api.fig))
 
-    def set_title(self, title: str):
-        self._api.lib.figure_set_title(self._api.fig, title.encode())
-
-    def _load_lib(self) -> None:
-        ffi = cffi.FFI()
-        lib = ffi.dlopen(os.path.join(FPATH, LIB_NAME))
-        ffi.cdef(open(os.path.join(FPATH, CDEF_NAME)).read())
-        self._api = RApi(lib, ffi.NULL, ffi, self)
-
-
-    def _init(self) -> None:
-        self.ax = [Axes(i, self._api) for i in range(self._api.fig.axes_count)]
-
-    @window_not_closed
-    def _show(self, window_title: Optional[str], width: int, height: int, fps: int) -> None:
-        self._api.lib.figure_show(self._api.fig, self._api.cstr(window_title), width, height, fps)
-        self._api.closed = True
-        self._wait_closed.set()
-
-    def _wait_init(self) -> None:
-        """
-        return when figure is allocated in memory to prevent refrencing to NULL when
-        calling from another thread
-        """
-        self._api.lib.figure_wait_for_InitWindow(self._api.fig)
+    @property
+    def ax(self):
+        return self.views[self.active_view].ax
 
     @window_not_closed
-    def show(self, window_title: str = None, width: int = 1280, height: int = 720, fps: int = 20, block: bool = True) -> None:
-        """
-        starts a game loop and draws artists on the screen.
-        block: whether to use a separate thead to run the game loop.
-          if False, this function will return immediately otherwise it will block until the window is closed
-        """
-        if not block:
-            threading.Thread(target=self._show, args=(window_title, width, height, fps)).start()
-            self._wait_init()
-            return
-        self._show(window_title, width, height, fps)
-
+    def add_view(self, data=None, title=None, *, index=None, timeframe=None):
+        """Add/select independent view. Optional data/index only initializes its x-axis."""
+        if self._show_started:
+            raise RuntimeError("Add views before show()")
+        view_id=int(self._api.lib.figure_add_view(self._api.fig))
+        view=View(self,view_id)
+        self.views.append(view)
+        if data is not None:
+            index=data.index if hasattr(data,"index") else data
+        if index is not None:
+            view.initialize(index,timeframe=timeframe,title=title)
+        return view
 
     @window_not_closed
-    def show_cursors(self) -> None:
+    def init_view(self, data, title=None, timeframe=None):
+        """Compatibility helper: initialize default view index without drawing."""
+        if self.views[0].length:
+            raise ValueError("Base view already initialized")
+        self.views[0].initialize(data.index if hasattr(data,"index") else data,
+                                  title=title,timeframe=timeframe)
+        return self.views[0]
+
+    @window_not_closed
+    def set_title(self, value):
+        """Set the window title used by show(), not a data view label."""
+        self._window_title=str(value)
+        return self
+
+    @window_not_closed
+    def select_view(self, view_id):
+        return self.views[view_id].select()
+
+    @window_not_closed
+    def set_xdata(self, index, timeframe=None, start=0):
+        if timeframe is not None:
+            raise ValueError("timeframe is immutable after view initialization")
+        return self.views[self.active_view].set_xdata(index,start=start)
+
+    @window_not_closed
+    def show_legend(self, position=LegendPosition.BOTTOM_LEFT):
+        for axes in self.ax:
+            axes.show_legend(position)
+        return self
+
+    @window_not_closed
+    def show_cursors(self):
         self._api.lib.figure_show_cursors(self._api.fig)
+        return self
 
     @window_not_closed
-    def update(self):
-        """
-        update the figure by recomputing everything
-        """
-        self._api.fig.force_update = True
+    def invalidate(self):
+        self._api.lib.figure_invalidate(self._api.fig)
+        return self
 
-    def add_view(self,df:pd.DataFrame,title:str):
-        bs=self.__create_bar_series__(title,df)
-        self._api.lib.figure_add_view(self._api.fig,bs)
-        
+    def _show(self,title,width,height,fps):
+        try:
+            self._api.lib.figure_show(self._api.fig,self._api.cstr(title),width,height,fps)
+        finally:
+            self._closed_event.set()
+
+    update=invalidate
+
+    @contextmanager
+    def edit(self):
+        """Lock drawing while writing directly to artist.data / artist.ydata.
+
+        Do not call set_data/update_tick/select_view inside this context;
+        those APIs acquire the same non-reentrant C lock themselves.
+        """
+        if self.closed: raise RuntimeError("Figure is closed")
+        self._api.lib.figure_lock(self._api.fig)
+        try:
+            yield self
+        finally:
+            self._api.lib.figure_unlock(self._api.fig)
+            self.invalidate()
 
     @window_not_closed
-    def set_title(self, title: str) -> None:
-        self._api.lib.figure_set_title(self._api.fig, self._api.cstr(title))
-
-    def init_view(self,df:pd.DataFrame, title:str=None):
-        if self._api.base_view_set:
-            raise Exception("base view already called; try figure.add_view")
-        self._api.lib.figure_set_base_bar_series(self._api.fig,self.__create_bar_series__(df,title))
-        self._api.base_view_set=True
-
-    def __create_bar_series__(self,df:pd.DataFrame, title:str=None):
-        assert len(df.columns)==4
-        df.columns=[x for x in 'ohlc']
-        dfd={x:self._api.ffi.cast('float*',df[x].to_numpy(np.float32).ctypes.data) for x in df.columns}
-        index=pd.Series(df.index)
-        timeframe = np.bincount([x for x in np.diff(index) if not np.isnan(x)]).argmax()
-        if len(pd.Series(index).dropna().diff().iloc[1:].drop_duplicates()) != 1:
-            warnings.warn(f"index spacing is not equal, the most occurrent spacing ({timeframe}) will be applied", RuntimeWarning)    
-            
-        return self._api.lib.bar_series_create(
-            timeframe,
-            len(df),
-            dfd,
-            self._api.ffi.cast('double*',index.to_numpy(dtype=np.float64).ctypes.data),
-            self._api.arena,
-            self._api.cstr(title))
-                               
-        # BarSeries* bar_series_create(size_t timeframe, size_t len, Candles candles, double* epochs, Arena *arena, const char *title);
-        
-    @window_not_closed
-    def set_xdata(self, xdata: pd.Index, timeframe: int, start: int=0) -> None:
-        """
-        sets the shared x-axis data with a range
-        """
-        n=self._api.total_len
-        if(n==0):raise Exception("draw some artists first")
-        if len(xdata)> n: raise Exception("source len cannot exceed dest len")
-        xdata=pd.Series(xdata,dtype=np.float64).to_numpy()
-        pxdata=self._api.ffi.cast('double*',xdata.ctypes.data)
-        self._api.lib.figure_update_xdata(self._api.fig, pxdata, timeframe,start,len(xdata))
-
-    @window_not_closed
-    def show_legend(self, lp: LegendPosition = LegendPosition.BOTTOM_LEFT) -> None:
-        self._api.lib.figure_show_legends(self._api.fig, lp)
+    def show(self,title=None,width=1280,height=720,fps=60,block=True):
+        if self._show_started: raise RuntimeError("show() may be called only once")
+        if min(width,height,fps)<=0: raise ValueError("width, height and fps must be positive")
+        if not block and platform.system()=="Darwin":
+            raise RuntimeError("Raylib requires the main thread on macOS; use show(block=True)")
+        self._show_started=True
+        if title is None: title=self._window_title
+        if block:
+            try: self._show(title,width,height,fps)
+            finally: self._api.closed=True
+        else:
+            self._thread=threading.Thread(target=self._show,args=(title,width,height,fps),daemon=True)
+            self._thread.start()
+            self._api.lib.figure_wait_for_InitWindow(self._api.fig)
+        return self
 
     def wait_closed(self):
-        self._wait_closed.wait()
-        
+        if not self._show_started:
+            raise RuntimeError("show() has not been called")
+        self._closed_event.wait()
+        if self._thread:
+            self._thread.join()
+        self._api.closed=True
+
     @property
-    def closed(self)->bool:
-        return self._api.closed
-  
+    def closed(self):
+        return self._api.closed or self._closed_event.is_set()
+
+    def close(self):
+        """Release C buffers only after the window loop has exited."""
+        if self._show_started and not self._closed_event.is_set():
+            raise RuntimeError("Close the raylib window before releasing figure memory")
+        if not self._api.closed:
+            self._api.closed=True
+        if self._api.fig != self._api.ffi.NULL:
+            self._api.lib.figure_destroy(self._api.fig)
+            self._api.fig=self._api.ffi.NULL

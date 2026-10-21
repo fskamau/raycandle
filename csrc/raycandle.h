@@ -24,6 +24,7 @@ typedef enum {
 } LegendPosition;
 
 typedef struct Figure Figure;
+typedef struct ReadySignal ReadySignal;
 typedef struct {
   size_t llen;
   LegendPosition lp;
@@ -51,6 +52,7 @@ typedef struct {
 }Limit;
 
 
+typedef struct FigureView FigureView;
 typedef struct Artist Artist;
 typedef struct ArtistVTable ArtistVTable;
 
@@ -77,6 +79,8 @@ struct Artist{
   Color* colors;
   Axes* axes;
   ArtistVTable* avt;
+  FigureView* view; /* immutable owner, not the currently selected view */
+  size_t data_len; /* float count, not byte count */
   char *label;
   float thick;
   bool is_limitable;
@@ -118,15 +122,17 @@ typedef struct{
   size_t axes_index;
   int x[10];
 }MC;
-  
+
 struct Figure {
   Arena* arena;
+  ReadySignal* data_mutex;
   Theme theme;
   Fconfig* fc;
   Axes* axes;
   FigureView *fv;
   size_t axes_count;
   Font* font;
+  bool owns_font;
   Limit xlim;
   int redraw_count;
   int redraw_modebar;
@@ -143,7 +149,16 @@ Limit get_limf(const float *data, size_t len);
 //artist
 Artist* artist_create(Axes *axes, ArtistType atype, float thick, Color* colors, const char* label ,void *data);
 void artist_line_set_data(Artist* artist,  float* data, size_t start, size_t len); //copy `data` of len `len` to &internal_buffer[`start`]
-void artist_candle_set_data(Artist* artist, double*data, size_t start, size_t len);//copy `data` of len `len` to &internal_buffer[`start`]
+void artist_candle_set_data(Artist* artist, float*data, size_t start, size_t len);//copy `data` of len `len` to &internal_buffer[`start`]
+
+/* C owns the storage until figure_destroy(). Never resize the returned memory. */
+float* artist_get_data_ptr(Artist* artist);
+size_t artist_get_data_len(Artist* artist);
+void artist_line_shift(Artist* artist, size_t count);
+void artist_invalidate(Artist* artist);
+void artist_set_limitable(Artist* artist, int enabled);
+void artist_set_alpha(Artist* artist, unsigned char alpha);
+int artist_candle_update_tick(Artist* artist, double epoch, float price);
 
 //axes
 void axes_show_legend(Axes* axes, LegendPosition lp);
@@ -154,13 +169,27 @@ void axes_set_ylim(Axes* axes,double min, double max);
 Figure* figure_create(size_t rows, size_t cols);
 Figure *figure_createn(NC* nc); // manually set the nodes. it will call nc_compile(nc)
 void figure_wait_for_InitWindow(Figure* figure);
+void figure_destroy(Figure* figure);
+Axes* figure_get_axes(Figure* figure, size_t index);
+size_t figure_get_view_count(Figure* figure);
+size_t figure_get_active_view(Figure* figure);
+size_t figure_get_view_len(Figure* figure, size_t view_id);
+const double* figure_view_get_epochs(Figure* figure, size_t view_id);
+void figure_invalidate(Figure* figure);
+void figure_lock(Figure* figure);
+void figure_unlock(Figure* figure);
+void figure_set_font_path(Figure* figure, const char* path);
+/* initialize a selected view once; epochs are copied and kept independent */
+void figure_view_set_data(Figure* figure, size_t view_id, size_t len, const double* epochs, size_t timeframe, const char* title);
+void figure_view_update_xdata(Figure* figure, size_t view_id, const double* epochs, size_t start, size_t count);
+
 
 void figure_set_theme(Figure* figure, Theme theme);
-void figure_set_xformat(Figure* figure, const char* xformat); //change default timeseries xformat 
+void figure_set_xformat(Figure* figure, const char* xformat); //change default timeseries xformat
 void figure_set_window_title(Figure* figure, char *wtitle);
 void figure_show(Figure* figure, char* window_title, int width, int height, int fps); //run the disp loop until the window is closed. for more control look at figure.h use the function below
 
-void figure_update_xdata(Figure* figure, double* xdata, size_t timeframe, size_t start, size_t len); //update the xdata+start len len with new xdata of len len
+
 
 void figure_show_cursors(Figure* figure);
 void figure_show_legends(Figure* figure, LegendPosition lp);
@@ -177,10 +206,7 @@ typedef struct {
 } Candles;
 
 
-BarSeries* bar_series_create(size_t timeframe, size_t len, Candles candles, double* epochs, Arena *arena, const char *title);
-void bar_series_update(BarSeries *bs, double epoch, float price);
-void figure_set_base_bar_series(Figure* figure, BarSeries *bs);
-size_t figure_add_view(Figure* figure, BarSeries *bs); //returns the new index that can be used to move it on top
+size_t figure_add_view(Figure* figure); // creates an independent empty view and selects it
 void figure_move_view_on_top(Figure* figure, size_t view_id);
 void figure_print_views(Figure* figure);
 

@@ -38,3 +38,5 @@ size_t nc_compile(NC *nc); // compiles nodes and returns their length. Allocate 
 void nc_set_area(NC* nc, Rect* child_areas, Rect src_area, float spacing); // set area the dest of len nc->count. only after nc_compile.
 Node* node_at(Node* parent, size_t index);
 #endif // __NODE_H__
+
+void nc_destroy(NC* nc);

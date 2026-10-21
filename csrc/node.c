@@ -9,14 +9,14 @@
 
 struct NData {
   Arena* arena;
-  Rect** nodes;  
+  Rect** nodes;
   size_t count;
 };
-  
+
 NC *nc_create(size_t bytes)
 {
   Arena* arena=arena_create(bytes);
-  NC *nc = arena_alloc(arena, sizeof(NC));    
+  NC *nc = arena_alloc(arena, sizeof(NC));
   nc->root = arena_alloc(arena, sizeof(Node));
   memset(nc->root, 0, sizeof(Node));
   nc->root->area=(Rect){0.f,0.f,1.f,1.f};
@@ -84,7 +84,7 @@ static void node_count(Node* node, size_t* count)
     *count+=1;
     return;
   }
-  for(size_t i=0; i<node->count; ++i)node_count(&node->nodes[i],count);        
+  for(size_t i=0; i<node->count; ++i)node_count(&node->nodes[i],count);
 }
 
 static size_t nc_count(NC* nc)
@@ -109,10 +109,10 @@ static void nc_set_nodes(NC*nc, Node* node, size_t *count)
 static int qsort_compare_nodes(const void* a, const void* b){
     Rect *ra = *(Rect**)a;
     Rect *rb = *(Rect**)b;
-    if (fabsf(ra->y - rb->y) > 0.001f) 
+    if (fabsf(ra->y - rb->y) > 0.001f)
         return (ra->y < rb->y) ? -1 : 1;
     if (ra->x < rb->x) return -1;
-    if (ra->x > rb->x) return 1;    
+    if (ra->x > rb->x) return 1;
     return 0;
 }
 
@@ -121,7 +121,7 @@ size_t nc_compile(NC *nc)
   ASSERT(nc);
   ASSERTM(!nc->data->nodes,"already compiled\n");
   size_t count=nc_count(nc);
-  Rect** nodes=arena_alloc(nc->data->arena, sizeof(*nc->data->nodes)*count);  
+  Rect** nodes=arena_alloc(nc->data->arena, sizeof(*nc->data->nodes)*count);
   nc->data->nodes=nodes;
   nc->data->count=count;
   count=0;
@@ -173,3 +173,5 @@ Node* node_at(Node* parent, size_t index)
   ASSERTM(index<parent->count,"index error");
   return parent->nodes+index;
 }
+
+void nc_destroy(NC* nc) { if(nc && nc->data) arena_free(nc->data->arena); }

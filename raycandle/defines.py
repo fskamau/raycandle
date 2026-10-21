@@ -37,4 +37,3 @@ class LegendPosition(GeneralEnum):
     TOP_RIGHT = 2
     BOTTOM_LEFT = 3
     BOTTOM_RIGHT = 4
-

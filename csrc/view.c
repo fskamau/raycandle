@@ -1,62 +1,35 @@
 #include "view.h"
 #include <string.h>
+#include <math.h>
 #include "raycandle.h"
 
-BarSeries* bar_series_create(size_t timeframe, size_t len, Candles candles, double* epochs, Arena *arena, const char *title)
+BarSeries* bar_series_create(size_t timeframe, size_t len, const double* epochs, Arena* arena, const char* title)
 {
-  ASSERT(timeframe>0);
-  ASSERTM(len>=2,"atleast 2 records are needed\n");
-  ASSERT(epochs &&arena);
-  BarSeries *bs=arena_alloc(arena,sizeof(BarSeries));
-  memset(bs,0,sizeof(BarSeries));
-  bs->timeframe=timeframe;
-  bs->len=len;
-  bs->epochs=arena_alloc(arena,sizeof(*bs->epochs)*bs->len);
-  memcpy(bs->epochs,epochs,sizeof(*bs->epochs)*bs->len);
-  Candles c={0};
-  c.o=arena_alloc(arena, sizeof(*c.o)*bs->len*4);
-  c.h=c.o+bs->len*1;
-  c.l=c.o+bs->len*2;
-  c.c=c.o+bs->len*3;
-  bs->candles=c;
-  memcpy(c.o,candles.o,sizeof(*c.o)*bs->len);
-  memcpy(c.h,candles.h,sizeof(*c.o)*bs->len);
-  memcpy(c.l,candles.l,sizeof(*c.o)*bs->len);
-  memcpy(c.c,candles.c,sizeof(*c.o)*bs->len);
-  bs->ur=UPDATE_REASON_INIT;
-  bs->curr_epoch=epochs[len-1]-(size_t)epochs[len-1]%timeframe;
-  if(title)bs->title=str_createf_with_arena(arena,"%s",title);
+  ASSERT(arena && epochs && timeframe > 0 && len >= 2);
+  BarSeries* bs = arena_calloc(arena, sizeof(*bs), 0);
+  bs->timeframe = timeframe;
+  bs->len = len;
+  bs->epochs = arena_alloc(arena, sizeof(double)*len);
+  memcpy(bs->epochs, epochs, sizeof(double)*len);
+  bs->curr_epoch = (size_t)floor(epochs[len-1] / timeframe) * timeframe;
+  bs->ur = UPDATE_REASON_INIT;
+  if (title) bs->title = str_createf_with_arena(arena, "%s", title);
   return bs;
 }
-  
 
-void bar_series_update(BarSeries *bs, double epoch, float price)
+int bar_series_update_epoch(BarSeries* bs, double epoch)
 {
-  size_t lm1=bs->len-1;
-  size_t iepoch=epoch;
-  size_t curr_anchor=iepoch - iepoch%bs->timeframe;
-  Candles c=bs->candles;
-  ASSERTM(bs->epochs[lm1]<=epoch, "cannot update with a past epoch past: %f new %f\n",bs->epochs[lm1],epoch);
-  if(curr_anchor!=bs->curr_epoch){
-    bs->epochs[lm1]=curr_anchor;
-    for(size_t i=0;i<lm1;++i){
-      c.o[i]=c.o[i+1];
-      c.h[i]=c.h[i+1];
-      c.l[i]=c.l[i+1];
-      c.c[i]=c.c[i+1];
-      bs->epochs[i]=bs->epochs[i+1];
-    }
-    c.o[lm1]=c.h[lm1]=c.l[lm1]=c.c[lm1]=price;
-    bs->epochs[lm1]=epoch;
-    bs->ur=UPDATE_REASON_CANDLE;
-    bs->curr_epoch=curr_anchor;
+  if (!bs || !isfinite(epoch) || epoch < bs->epochs[bs->len-1]) return -1;
+  size_t anchor = (size_t)floor(epoch / bs->timeframe) * bs->timeframe;
+  size_t last = bs->len - 1;
+  if (anchor > bs->curr_epoch) {
+    memmove(bs->epochs, bs->epochs+1, last*sizeof(double));
+    bs->epochs[last] = (double)anchor;
+    bs->curr_epoch = anchor;
+    bs->ur = UPDATE_REASON_CANDLE;
+    return 1;
   }
-  else{
-    if(c.h[lm1]<price)c.h[lm1]=price;
-    if(c.l[lm1]>price)c.l[lm1]=price;
-    c.c[lm1]=price;
-    bs->epochs[lm1]=iepoch;
-    bs->ur=UPDATE_REASON_TICK;
-  }
+  bs->epochs[last] = epoch;
+  bs->ur = UPDATE_REASON_TICK;
+  return 0;
 }
-

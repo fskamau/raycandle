@@ -1,54 +1,135 @@
 #include "ready_signal.h"
-
-#include <stdio.h>
-#include <stdlib.h>
 #include "arena.h"
-#include <pthread.h>
 
-#define RS_ERROR(fmt, ...) do{                                          \
-    fprintf(stderr,"%s:%d: [SIGNAL ERROR] " fmt ,__FILE__, __LINE__, ##__VA_ARGS__); \
-    exit(1);}while (0)                                           
+#include <stdlib.h>
+#include <stdbool.h>
 
+#ifdef _WIN32
+    #include <windows.h>
+#else
+    #include <pthread.h>
+#endif
 
-ReadySignal *ready_signal_create(Arena* arena)
-{
-  ReadySignal * signal=arena_alloc(arena, sizeof(ReadySignal));
-  signal->ready = 0;
-  if (pthread_mutex_init(&signal->lock, NULL) != 0) {
-    RS_ERROR("cannot init mutex\n");
-  }
-  if (pthread_cond_init(&signal->cond, NULL) != 0) {
-    pthread_mutex_destroy(&signal->lock);
-    RS_ERROR("cannot init cond\n");
-  }
-  return signal;
+struct ReadySignal {
+#ifdef _WIN32
+    SRWLOCK lock;
+    CONDITION_VARIABLE cond;
+#else
+    pthread_mutex_t lock;
+    pthread_cond_t cond;
+#endif
+    bool ready;
+};
+
+ReadySignal* ready_signal_create(Arena* arena) {
+    if (!arena) return NULL;
+
+    ReadySignal* s = arena_calloc(arena, sizeof(*s), 0);
+    if (!s) return NULL;
+
+#ifdef _WIN32
+    InitializeSRWLock(&s->lock);
+    InitializeConditionVariable(&s->cond);
+#else
+    if (pthread_mutex_init(&s->lock, NULL) != 0)
+        abort();
+
+    if (pthread_cond_init(&s->cond, NULL) != 0) {
+        pthread_mutex_destroy(&s->lock);
+        abort();
+    }
+#endif
+
+    s->ready = false;
+    return s;
 }
 
-void ready_signal_set(ReadySignal *signal) {
-  pthread_mutex_lock(&signal->lock);
-  signal->ready = 1;
-  pthread_cond_broadcast(&signal->cond);
-  pthread_mutex_unlock(&signal->lock);
+void ready_signal_set(ReadySignal* s) {
+    if (!s) return;
+
+#ifdef _WIN32
+    AcquireSRWLockExclusive(&s->lock);
+    s->ready = true;
+    WakeAllConditionVariable(&s->cond);
+    ReleaseSRWLockExclusive(&s->lock);
+#else
+    pthread_mutex_lock(&s->lock);
+    s->ready = true;
+    pthread_cond_broadcast(&s->cond);
+    pthread_mutex_unlock(&s->lock);
+#endif
 }
 
-void ready_signal_wait(ReadySignal *signal) {
-  pthread_mutex_lock(&signal->lock);
-  while (!signal->ready) {
-    pthread_cond_wait(&signal->cond, &signal->lock);
-  }
-  pthread_mutex_unlock(&signal->lock);
+void ready_signal_wait(ReadySignal* s) {
+    if (!s) return;
+
+#ifdef _WIN32
+    AcquireSRWLockExclusive(&s->lock);
+
+    while (!s->ready) {
+        if (!SleepConditionVariableSRW(
+                &s->cond, &s->lock, INFINITE, 0)) {
+            ReleaseSRWLockExclusive(&s->lock);
+            abort();
+        }
+    }
+
+    ReleaseSRWLockExclusive(&s->lock);
+#else
+    pthread_mutex_lock(&s->lock);
+
+    while (!s->ready) {
+        if (pthread_cond_wait(&s->cond, &s->lock) != 0) {
+            pthread_mutex_unlock(&s->lock);
+            abort();
+        }
+    }
+
+    pthread_mutex_unlock(&s->lock);
+#endif
 }
 
-void ready_signal_destroy(ReadySignal *signal) {
-  if (!signal)
-    return;
-  pthread_mutex_destroy(&signal->lock);
-  pthread_cond_destroy(&signal->cond);
+void ready_signal_clear(ReadySignal* s) {
+    if (!s) return;
+
+#ifdef _WIN32
+    AcquireSRWLockExclusive(&s->lock);
+    s->ready = false;
+    ReleaseSRWLockExclusive(&s->lock);
+#else
+    pthread_mutex_lock(&s->lock);
+    s->ready = false;
+    pthread_mutex_unlock(&s->lock);
+#endif
 }
 
-void ready_signal_clear(ReadySignal *signal)
-{
-  pthread_mutex_lock(&signal->lock);
-  signal->ready = 0;
-  pthread_mutex_unlock(&signal->lock);
+void ready_signal_destroy(ReadySignal* s) {
+    if (!s) return;
+
+#ifndef _WIN32
+    pthread_cond_destroy(&s->cond);
+    pthread_mutex_destroy(&s->lock);
+#endif
+
+    // Memory belongs to Arena; do not free(s).
+}
+
+void ready_signal_lock(ReadySignal* s) {
+    if (!s) return;
+
+#ifdef _WIN32
+    AcquireSRWLockExclusive(&s->lock);
+#else
+    pthread_mutex_lock(&s->lock);
+#endif
+}
+
+void ready_signal_unlock(ReadySignal* s) {
+    if (!s) return;
+
+#ifdef _WIN32
+    ReleaseSRWLockExclusive(&s->lock);
+#else
+    pthread_mutex_unlock(&s->lock);
+#endif
 }

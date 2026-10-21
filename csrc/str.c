@@ -40,7 +40,7 @@ static const char* str_strerror(StrError err) {
 
 #define STR_FAIL(err_enum) STR_ERROR(str_strerror(err_enum))
 #define STR_FAIL_MSG(msg)  STR_ERROR(msg)
-   
+
 #define STR_ALIGNMENT (sizeof(void*))
 #define STR_HEADER_SIZE ((sizeof(StrHeader) + (STR_ALIGNMENT - 1)) & ~(STR_ALIGNMENT - 1))
 
@@ -55,17 +55,17 @@ char* str_create(char* external_buf, size_t buf_size)
     if (external_buf) {
         if (buf_size <= STR_HEADER_SIZE) {
             STR_FAIL_MSG("External buffer too small for header");
-        }        
+        }
         if ((uintptr_t)external_buf % STR_ALIGNMENT != 0) {
             STR_FAIL(STR_ERR_ALIGN);
-        }        
+        }
         hdr = (StrHeader*)external_buf;
         hdr->is_external = 1;
         hdr->capacity = buf_size - STR_HEADER_SIZE - 1;
     } else {
-        total_needed = STR_HEADER_SIZE + buf_size + 1;        
+        total_needed = STR_HEADER_SIZE + buf_size + 1;
         hdr = (StrHeader*)malloc(total_needed);
-        if (!hdr) STR_FAIL(STR_ERR_NOMEM);        
+        if (!hdr) STR_FAIL(STR_ERR_NOMEM);
         hdr->is_external = 0;
         hdr->capacity = buf_size;
     }
@@ -84,7 +84,7 @@ char* str_createf_with_arena(Arena* arena, const char* fmt, ...)
     return s;
 }
 
-char* str_createf(const char* fmt, ...) 
+char* str_createf(const char* fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
@@ -129,7 +129,7 @@ void str_append(char* s, const char* fmt, ...)
     if (written < 0) {
         STR_FAIL_MSG("str_append: encoding error");
     }
-    if ((size_t)written > available) {     
+    if ((size_t)written > available) {
         hdr->len = hdr->capacity;
         STR_FAIL(STR_ERR_OVERFLOW);
     }
@@ -166,7 +166,7 @@ size_t str_rem(char* s)
 size_t str_len(char* s)
 {
   StrHeader* hdr=str_get_hdr(s);
-  return hdr->len;  
+  return hdr->len;
 }
 
 
@@ -179,7 +179,7 @@ static inline StrHeader* str_get_hdr(char* s)
      (long long)hdr->len<0 ||
      (long long)hdr->capacity<0||
      hdr->len>hdr->capacity)
-    STR_FAIL(STR_ERR_CORRUPT);   
+    STR_FAIL(STR_ERR_CORRUPT);
   return hdr;
 }
 
@@ -203,7 +203,7 @@ static char* str_createv(Arena* arena, const char* fmt, va_list args)
     StrHeader* hdr = str_get_hdr(s);
     size_t available = hdr->capacity;
     int written = vsnprintf(s, available + 1, fmt, args);
-    if (written < 0 || (size_t)written > available) 
+    if (written < 0 || (size_t)written > available)
         STR_FAIL_MSG("str_createv: format write failed unexpectedly");
     hdr->len = (size_t)written;
     return s;

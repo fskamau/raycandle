@@ -1,0 +1,34 @@
+# Python bytecode and temporary files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+*.egg-info/
+dist/
+*.whl
+
+# Native/CMake build artifacts
+build/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+*.o
+*.obj
+*.a
+*.lib
+*.dll
+*.so
+*.dylib
+*.pdb
+raycandle/raycandle.h
+
+# Local development/market-data files
+.env
+.env.*
+!.env.example
+/data/
+*.log
+.DS_Store
